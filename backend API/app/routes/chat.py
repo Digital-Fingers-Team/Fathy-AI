@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.db.session import get_db
 from app.repositories.memory_repo import MemoryRepository
 from app.schemas.chat import ChatRequest, ChatResponse, RetrievedMemory
+from app.services.ai_service import HistoryMessage
 from app.services.memory_service import MemoryService
 
 router = APIRouter()
@@ -17,8 +18,11 @@ def chat(payload: ChatRequest, request: Request, db: Session = Depends(get_db)):
     memory_service = MemoryService(repo)
     matches = memory_service.search(payload.message, limit=5)
 
+    # Convert schema history to service-layer dataclass.
+    history = [HistoryMessage(role=h.role, content=h.content) for h in payload.history]
+
     ai = request.app.state.ai_service
-    result = ai.answer(payload.message, matches)
+    result = ai.answer(payload.message, matches, history=history)
 
     used = [
         RetrievedMemory(
@@ -31,4 +35,9 @@ def chat(payload: ChatRequest, request: Request, db: Session = Depends(get_db)):
         for m in matches
     ]
 
-    return ChatResponse(answer=result.answer, used_memory=used, model=result.model, note=result.note)
+    return ChatResponse(
+        answer=result.answer,
+        used_memory=used,
+        model=result.model,
+        note=result.note,
+    )
