@@ -1,11 +1,32 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from openai import OpenAI
 
 from app.core.config import Settings
 from app.services.memory_service import ScoredMemory
+
+# Maximum number of past turns (user+assistant pairs) to send.
+# Keeps context window manageable while preserving recent conversation flow.
+MAX_HISTORY_TURNS = 10
+
+SYSTEM_PROMPT = (
+    "You are Fathy (فتحي), a bilingual (Arabic/English) AI assistant. "
+    "Be precise and helpful. "
+    "Never claim you retrained or self-learned — your knowledge comes from "
+    "facts explicitly stored in memory by the user. "
+    "If 'Known facts' are provided below the user message, use them when relevant "
+    "and cite that you're drawing from stored memory. "
+    "If they are not relevant, ignore them and answer from your general knowledge. "
+    "Reply in the same language the user writes in."
+)
+
+
+@dataclass(frozen=True)
+class HistoryMessage:
+    role: str  # "user" | "assistant"
+    content: str
 
 
 @dataclass(frozen=True)
@@ -18,14 +39,20 @@ class AIResult:
 def _build_known_facts(memories: list[ScoredMemory]) -> str:
     if not memories:
         return ""
-    lines = ["Known facts:"]
+    lines = ["[Known facts from stored memory]"]
     for m in memories:
         tags = f" (tags: {', '.join(m.tags)})" if m.tags else ""
-        lines.append(f"* Q: {m.item.question}{tags}")
+        lines.append(f"• Q: {m.item.question}{tags}")
         lines.append(f"  A: {m.item.answer}")
-    lines.append("")
-    lines.append("Answer the user based on these facts if relevant. If not relevant, ignore them.")
     return "\n".join(lines)
+
+
+def _trim_history(history: list[HistoryMessage]) -> list[HistoryMessage]:
+    """Keep only the last MAX_HISTORY_TURNS pairs to avoid bloating the context."""
+    max_msgs = MAX_HISTORY_TURNS * 2
+    if len(history) > max_msgs:
+        return history[-max_msgs:]
+    return history
 
 
 class AIService:
@@ -33,39 +60,57 @@ class AIService:
         self._settings = settings
         self._client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
 
-    def answer(self, message: str, memories: list[ScoredMemory]) -> AIResult:
+    def answer(
+        self,
+        message: str,
+        memories: list[ScoredMemory],
+        history: list[HistoryMessage] | None = None,
+    ) -> AIResult:
         known = _build_known_facts(memories)
 
+        # Inject known facts as a suffix on the latest user message so the
+        # model sees them in context without polluting the history.
+        user_content = message
+        if known:
+            user_content = f"{message}\n\n{known}"
+
         if not self._client:
-            # Real behavior: no model call without credentials. Use memory only.
+            # No model available — answer from memory only.
             if memories:
+                best = memories[0].item.answer
                 return AIResult(
-                    answer=f"{known}\n\nI can't call the AI model because `OPENAI_API_KEY` is not set. "
-                    f"Based on saved memory above, here's what I can say:\n\n{memories[0].item.answer}",
+                    answer=(
+                        f"*(No AI model — answering from stored memory only)*\n\n{best}"
+                    ),
                     model=None,
                     note="OPENAI_API_KEY missing; answered from stored memory only.",
                 )
             return AIResult(
-                answer="I can't call the AI model because `OPENAI_API_KEY` is not set, and I have no relevant stored memory yet.",
+                answer=(
+                    "I can't call the AI model (`OPENAI_API_KEY` not set) "
+                    "and I have no relevant stored memory yet."
+                ),
                 model=None,
                 note="OPENAI_API_KEY missing; no stored memory matched.",
             )
 
-        instructions = (
-            "You are Fathy (فتحي), a bilingual (Arabic/English) AI assistant. "
-            "Be precise, explainable, and avoid claiming you retrained or self-learned. "
-            "If you use 'Known facts', only use them when relevant."
-        )
+        # Build the messages list: system → history → current user turn.
+        messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
 
-        user_input = f"{known}\n\nUser message:\n{message}" if known else message
+        trimmed = _trim_history(history or [])
+        for h in trimmed:
+            messages.append({"role": h.role, "content": h.content})
 
-        resp = self._client.responses.create(
+        messages.append({"role": "user", "content": user_content})
+
+        response = self._client.chat.completions.create(
             model=self._settings.model_name,
-            instructions=instructions,
-            input=user_input,
+            messages=messages,  # type: ignore[arg-type]
+            temperature=0.7,
         )
 
-        text = (resp.output_text or "").strip()
+        text = (response.choices[0].message.content or "").strip()
         if not text:
             text = "I couldn't generate a response."
+
         return AIResult(answer=text, model=self._settings.model_name)
