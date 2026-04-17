@@ -1,11 +1,15 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 
 from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.db.models import MemoryItem
+
+
+def _now() -> datetime:
+    return datetime.now(timezone.utc)
 
 
 def _tags_to_csv(tags: list[str]) -> str:
@@ -17,7 +21,6 @@ def _tags_to_csv(tags: list[str]) -> str:
         if "," in t:
             t = t.replace(",", " ")
         cleaned.append(t)
-    # de-dup while preserving order
     seen: set[str] = set()
     deduped: list[str] = []
     for t in cleaned:
@@ -74,22 +77,29 @@ class MemoryRepository:
             item.answer = answer
         if tags is not None:
             item.tags_csv = _tags_to_csv(tags)
-        item.updated_at = datetime.utcnow()
+        item.updated_at = _now()
         self._db.add(item)
         self._db.commit()
         self._db.refresh(item)
         return item
 
-    def list(self, *, q: str | None = None, offset: int = 0, limit: int = 50) -> tuple[list[MemoryItem], int]:
+    def list(
+        self, *, q: str | None = None, offset: int = 0, limit: int = 50
+    ) -> tuple[list[MemoryItem], int]:
         stmt = select(MemoryItem)
         count_stmt = select(func.count(MemoryItem.id))
 
         if q:
-            # Simple DB-side filter; relevance ranking happens in service layer.
             like = f"%{q}%"
-            stmt = stmt.where((MemoryItem.question.like(like)) | (MemoryItem.answer.like(like)) | (MemoryItem.tags_csv.like(like)))
+            stmt = stmt.where(
+                (MemoryItem.question.like(like))
+                | (MemoryItem.answer.like(like))
+                | (MemoryItem.tags_csv.like(like))
+            )
             count_stmt = count_stmt.where(
-                (MemoryItem.question.like(like)) | (MemoryItem.answer.like(like)) | (MemoryItem.tags_csv.like(like))
+                (MemoryItem.question.like(like))
+                | (MemoryItem.answer.like(like))
+                | (MemoryItem.tags_csv.like(like))
             )
 
         stmt = stmt.order_by(MemoryItem.updated_at.desc()).offset(offset).limit(limit)
