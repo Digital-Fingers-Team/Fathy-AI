@@ -1,13 +1,29 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useEffect, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
-import { api, type RetrievedMemory } from "@/lib/api";
-import { Button, Card, Input, Pill, Textarea } from "@/components/ui";
+import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
+import { Button, Card, Pill, Textarea } from "@/components/ui";
 
-type Msg = { role: "user" | "assistant"; content: string };
+type Msg = {
+  role: "user" | "assistant";
+  content: string;
+  usedMemory?: RetrievedMemory[];
+  note?: string | null;
+};
+
+// How many recent turns to send to the backend (each turn = 1 user + 1 assistant msg).
+const MAX_HISTORY_TURNS = 10;
+
+function buildHistory(messages: Msg[]): HistoryMessage[] {
+  // Drop the initial greeting, send only real turns.
+  const real = messages.slice(1);
+  // Keep last N*2 messages.
+  const trimmed = real.slice(-MAX_HISTORY_TURNS * 2);
+  return trimmed.map((m) => ({ role: m.role, content: m.content }));
+}
 
 function TagsRow({ tags }: { tags: string[] }) {
   if (!tags.length) return null;
@@ -29,7 +45,10 @@ function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
       </summary>
       <div className="mt-2 space-y-3 text-sm">
         {items.map((m) => (
-          <div key={m.id} className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
+          <div
+            key={m.id}
+            className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3"
+          >
             <div className="flex items-center justify-between gap-3">
               <div className="text-xs text-[rgb(var(--muted))]">#{m.id}</div>
               <div className="text-xs text-[rgb(var(--muted))]">score: {m.score}</div>
@@ -51,30 +70,46 @@ export function ChatClient() {
     {
       role: "assistant",
       content:
-        "أنا فتحي (Fathy). اسألني أي شيء، وعلّمني حقائق جديدة من صفحة Teach.\n\nI’m Fathy. Ask me anything, and teach me new facts from the Teach page."
+        "أنا فتحي (Fathy). اسألني أي شيء، وعلّمني حقائق جديدة من صفحة Teach.\n\nI'm Fathy. Ask me anything, and teach me new facts from the Teach page."
     }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
-  const [lastUsedMemory, setLastUsedMemory] = useState<RetrievedMemory[]>([]);
-  const [note, setNote] = useState<string | null>(null);
+  const bottomRef = useRef<HTMLDivElement>(null);
 
-  const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
+  // Auto-scroll to latest message.
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [messages]);
+
+  const canSend = useMemo(
+    () => input.trim().length > 0 && !loading,
+    [input, loading]
+  );
 
   async function onSend() {
     const text = input.trim();
     if (!text || loading) return;
     setLoading(true);
-    setNote(null);
-    setLastUsedMemory([]);
     setInput("");
-    setMessages((prev) => [...prev, { role: "user", content: text }]);
+
+    const userMsg: Msg = { role: "user", content: text };
+    setMessages((prev) => [...prev, userMsg]);
+
+    // Build history from everything before this new user message.
+    const historySnapshot = buildHistory([...messages]);
 
     try {
-      const res = await api.chat(text);
-      setMessages((prev) => [...prev, { role: "assistant", content: res.answer }]);
-      setLastUsedMemory(res.used_memory || []);
-      setNote(res.note || null);
+      const res = await api.chat(text, historySnapshot);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: res.answer,
+          usedMemory: res.used_memory ?? [],
+          note: res.note ?? null
+        }
+      ]);
     } catch (e) {
       setMessages((prev) => [
         ...prev,
@@ -92,17 +127,21 @@ export function ChatClient() {
           <div>
             <div className="text-lg font-semibold">Chat</div>
             <div className="text-sm text-[rgb(var(--muted))]">
-              Memory is searched first, then injected as “Known facts” before generating.
+              Memory is searched first, then injected as context before generating.
             </div>
           </div>
           <div className="text-right text-xs text-[rgb(var(--muted))]">
-            API: {process.env.NEXT_PUBLIC_API_URL}
+            {process.env.NEXT_PUBLIC_API_URL}
           </div>
         </div>
 
-        <div className="mt-4 space-y-3">
+        {/* Message list */}
+        <div className="mt-4 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
           {messages.map((m, idx) => (
-            <div key={idx} className={m.role === "user" ? "flex justify-end" : "flex justify-start"}>
+            <div
+              key={idx}
+              className={m.role === "user" ? "flex justify-end" : "flex justify-start"}
+            >
               <div
                 className={
                   m.role === "user"
@@ -111,25 +150,38 @@ export function ChatClient() {
                 }
               >
                 {m.role === "assistant" ? (
-                  <div className="prose prose-slate max-w-none dark:prose-invert">
-                    <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                  </div>
+                  <>
+                    <div className="prose prose-slate max-w-none dark:prose-invert">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {m.content}
+                      </ReactMarkdown>
+                    </div>
+                    {m.note && (
+                      <div className="mt-2 rounded-lg bg-[rgba(var(--primary),0.08)] px-2 py-1 text-xs text-[rgb(var(--muted))]">
+                        {m.note}
+                      </div>
+                    )}
+                    {m.usedMemory && <MemoryPanel items={m.usedMemory} />}
+                  </>
                 ) : (
                   <div className="whitespace-pre-wrap">{m.content}</div>
                 )}
               </div>
             </div>
           ))}
+
+          {loading && (
+            <div className="flex justify-start">
+              <div className="max-w-[70%] rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 text-sm text-[rgb(var(--muted))]">
+                Thinking…
+              </div>
+            </div>
+          )}
+
+          <div ref={bottomRef} />
         </div>
 
-        {note ? (
-          <div className="mt-3 rounded-xl border border-[rgb(var(--border))] bg-[rgba(var(--primary),0.08)] px-3 py-2 text-xs text-[rgb(var(--muted))]">
-            Note: {note}
-          </div>
-        ) : null}
-
-        <MemoryPanel items={lastUsedMemory} />
-
+        {/* Input area */}
         <div className="mt-4 grid gap-2">
           <Textarea
             rows={3}
@@ -144,7 +196,9 @@ export function ChatClient() {
             }}
           />
           <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-[rgb(var(--muted))]">Enter to send · Shift+Enter for new line</div>
+            <div className="text-xs text-[rgb(var(--muted))]">
+              Enter to send · Shift+Enter for new line
+            </div>
             <Button onClick={onSend} disabled={!canSend}>
               {loading ? "Thinking…" : "Send"}
             </Button>
