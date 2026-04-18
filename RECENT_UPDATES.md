@@ -2,7 +2,7 @@
 
 ## 1. Fixed PyJWT Version
 
-- **File**: `backend API/requirements.txt`
+- **File**: `backend/requirements.txt`
 - **Change**: Updated `PyJWT==2.8.1` to `PyJWT==2.12.1` (2.8.1 doesn't exist)
 - **Status**: ✅ Fixed
 
@@ -18,14 +18,14 @@ Created a new API key context and added support for per-request API keys:
 
 ### Backend Changes
 
-- **File**: `backend API/app/services/ai_service.py`
+- **File**: `backend/app/services/ai_service.py`
   - Updated `AIService.__init__()` to accept optional `api_key` parameter
   - Client-provided API key overrides environment variable
 
-- **File**: `backend API/app/schemas/chat.py`
+- **File**: `backend/app/schemas/chat.py`
   - Added optional `api_key` field to `ChatRequest`
 
-- **File**: `backend API/app/routes/chat.py`
+- **File**: `backend/app/routes/chat.py`
   - Updated to use client-provided API key if present
   - Falls back to global AI service (environment variable) if not provided
 
@@ -64,7 +64,7 @@ The system already had language preferences (English/Arabic). Now:
 ### Test PyJWT Fix
 
 ```bash
-cd "backend API"
+cd "backend"
 pip install -r requirements.txt
 ```
 

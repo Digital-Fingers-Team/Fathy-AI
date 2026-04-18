@@ -10,7 +10,7 @@ It simulates learning via a **real, explainable workflow**:
 ## Monorepo
 
 ```
-/backend API
+/backend
   /app
     main.py
     /core
@@ -47,7 +47,7 @@ It simulates learning via a **real, explainable workflow**:
 ### 1) Setup
 
 ```bash
-cd "backend API"
+cd "backend"
 python -m venv .venv
 .\.venv\Scripts\activate
 pip install -r requirements.txt
@@ -74,7 +74,7 @@ python -m uvicorn app.main:app --reload
 ### Notes
 
 - If `OPENAI_API_KEY` is **not** set, `/chat` will **not** call a model. It will answer from stored memory only (if any).
-- Memory ranking is currently token-overlap + substring boost + small recency boost, implemented in `backend API/app/services/memory_service.py`.
+- Memory ranking is currently token-overlap + substring boost + small recency boost, implemented in `backend/app/services/memory_service.py`.
 
 ## Frontend (Next.js)
 

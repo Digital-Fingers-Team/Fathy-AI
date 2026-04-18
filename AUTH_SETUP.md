@@ -62,7 +62,7 @@ I've successfully implemented a complete authentication system for your Fathy ap
 ### 1. Install Backend Dependencies:
 
 ```bash
-cd "backend API"
+cd "backend"
 python -m pip install -r requirements.txt
 ```
 

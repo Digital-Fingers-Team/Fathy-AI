@@ -3,7 +3,7 @@
 ## 1. Install Updated Dependencies ✅
 
 ```bash
-cd "backend API"
+cd "backend"
 pip install -r requirements.txt
 # The PyJWT issue (2.8.1 not found) is now fixed with version 2.12.1
 ```
@@ -13,7 +13,7 @@ pip install -r requirements.txt
 **Terminal 1 - Backend**:
 
 ```bash
-cd "backend API"
+cd "backend"
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
@@ -91,7 +91,7 @@ AI responds using user's key
 **Backend Auth System** (from previous update):
 
 ```
-backend API/
+backend/
 ├── app/
 │   ├── routes/
 │   │   ├── auth.py (NEW)              # Login, signup, logout, delete
