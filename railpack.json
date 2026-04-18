@@ -11,14 +11,7 @@
 
   "steps": {
     "install": {
-      "cwd": "backend",
       "commands": ["pip install -r requirements.txt"]
-    },
-
-    "start": {
-      "inputs": [{ "step": "install" }],
-      "cwd": "backend",
-      "commands": ["python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
     }
   },
 
