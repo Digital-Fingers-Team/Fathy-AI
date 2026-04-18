@@ -21,7 +21,15 @@ def chat(payload: ChatRequest, request: Request, db: Session = Depends(get_db)):
     # Convert schema history to service-layer dataclass.
     history = [HistoryMessage(role=h.role, content=h.content) for h in payload.history]
 
-    ai = request.app.state.ai_service
+    # Use the AI service from app state, or create a new one with client-provided API key
+    if payload.api_key:
+        # If client provides an API key, create a new service with it
+        from app.services.ai_service import AIService
+        ai = AIService(request.app.state.settings, api_key=payload.api_key)
+    else:
+        # Otherwise use the global AI service
+        ai = request.app.state.ai_service
+
     result = ai.answer(payload.message, matches, history=history)
 
     used = [

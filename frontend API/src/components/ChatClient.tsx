@@ -5,7 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
-import { Button, Card, Pill, Textarea } from "@/components/ui";
+import { useApiKey } from "@/lib/api-key-context";
+import { Button, Card, Pill, Textarea, Input } from "@/components/ui";
 
 type Msg = {
   role: "user" | "assistant";
@@ -66,6 +67,8 @@ function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
 }
 
 export function ChatClient() {
+  const { apiKey, setApiKey } = useApiKey();
+  const [tempApiKey, setTempApiKey] = useState("");
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
@@ -76,6 +79,13 @@ export function ChatClient() {
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
+
+  // Load API key from context
+  useEffect(() => {
+    if (apiKey) {
+      setTempApiKey(apiKey);
+    }
+  }, [apiKey]);
 
   // Auto-scroll to latest message.
   useEffect(() => {
@@ -100,7 +110,7 @@ export function ChatClient() {
     const historySnapshot = buildHistory([...messages]);
 
     try {
-      const res = await api.chat(text, historySnapshot);
+      const res = await api.chat(text, historySnapshot, tempApiKey || undefined);
       setMessages((prev) => [
         ...prev,
         {
@@ -195,13 +205,45 @@ export function ChatClient() {
               }
             }}
           />
-          <div className="flex items-center justify-between gap-2">
-            <div className="text-xs text-[rgb(var(--muted))]">
-              Enter to send · Shift+Enter for new line
+          <div className="grid gap-2">
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="text-xs font-medium text-[rgb(var(--muted))] block mb-1">
+                  OpenAI API Key (optional)
+                </label>
+                <Input
+                  type="password"
+                  placeholder="sk-... (stored locally)"
+                  value={tempApiKey}
+                  onChange={(e) => {
+                    setTempApiKey(e.target.value);
+                    if (e.target.value) {
+                      setApiKey(e.target.value);
+                    }
+                  }}
+                />
+              </div>
+              {tempApiKey && (
+                <Button
+                  onClick={() => {
+                    setTempApiKey("");
+                    setApiKey("");
+                  }}
+                  variant="ghost"
+                  className="whitespace-nowrap"
+                >
+                  Clear
+                </Button>
+              )}
             </div>
-            <Button onClick={onSend} disabled={!canSend}>
-              {loading ? "Thinking…" : "Send"}
-            </Button>
+            <div className="flex items-center justify-between gap-2">
+              <div className="text-xs text-[rgb(var(--muted))]">
+                Enter to send · Shift+Enter for new line
+              </div>
+              <Button onClick={onSend} disabled={!canSend}>
+                {loading ? "Thinking…" : "Send"}
+              </Button>
+            </div>
           </div>
         </div>
       </Card>

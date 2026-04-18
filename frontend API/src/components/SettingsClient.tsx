@@ -4,30 +4,48 @@ import { useEffect, useState } from "react";
 
 import { Button, Card, Input, Label } from "@/components/ui";
 import { getPrefs, savePrefs } from "@/components/ClientPrefs";
+import { useApiKey } from "@/lib/api-key-context";
 
 export function SettingsClient() {
   const [dir, setDir] = useState<"ltr" | "rtl">("ltr");
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [language, setLanguage] = useState<"en" | "ar">("en");
   const [status, setStatus] = useState<string | null>(null);
+  const { apiKey, setApiKey } = useApiKey();
+  const [tempApiKey, setTempApiKey] = useState("");
 
   useEffect(() => {
     const p = getPrefs();
     setDir(p.dir);
     setTheme(p.theme);
     setLanguage(p.language);
-  }, []);
+    
+    // Load API key from context
+    if (apiKey) {
+      setTempApiKey(apiKey);
+    }
+  }, [apiKey]);
 
   function apply() {
     savePrefs({ dir, theme, language });
+    if (tempApiKey) {
+      setApiKey(tempApiKey);
+    }
     setStatus("Saved.");
+    setTimeout(() => setStatus(null), 1200);
+  }
+
+  function clearApiKey() {
+    setTempApiKey("");
+    setApiKey("");
+    setStatus("API key cleared.");
     setTimeout(() => setStatus(null), 1200);
   }
 
   return (
     <Card className="p-4">
       <div className="text-lg font-semibold">Settings</div>
-      <div className="mt-1 text-sm text-[rgb(var(--muted))]">UI preferences are stored locally in your browser.</div>
+      <div className="mt-1 text-sm text-[rgb(var(--muted))]">UI preferences and API settings are stored locally in your browser.</div>
 
       <div className="mt-4 grid gap-4 md:grid-cols-2">
         <div>
@@ -66,6 +84,27 @@ export function SettingsClient() {
         <div>
           <Label>API URL</Label>
           <Input value={process.env.NEXT_PUBLIC_API_URL || ""} readOnly />
+        </div>
+        <div className="md:col-span-2">
+          <Label>OpenAI API Key</Label>
+          <div className="flex gap-2">
+            <Input
+              type="password"
+              placeholder="sk-..."
+              value={tempApiKey}
+              onChange={(e) => setTempApiKey(e.target.value)}
+            />
+            <Button
+              onClick={clearApiKey}
+              className="whitespace-nowrap"
+              variant="ghost"
+            >
+              Clear
+            </Button>
+          </div>
+          <p className="mt-1 text-xs text-[rgb(var(--muted))]">
+            Your API key is stored locally in your browser and never sent to our servers.
+          </p>
         </div>
       </div>
 

@@ -13,6 +13,8 @@ class ChatRequest(BaseModel):
     # The frontend sends recent conversation turns so the backend stays stateless.
     # Oldest-first ordering; the server will trim to MAX_HISTORY_TURNS pairs.
     history: list[HistoryMessage] = Field(default_factory=list, max_length=50)
+    # Optional API key from client - overrides environment variable
+    api_key: str | None = Field(default=None, min_length=1, max_length=1000)
 
 
 class RetrievedMemory(BaseModel):

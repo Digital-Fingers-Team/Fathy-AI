@@ -56,9 +56,11 @@ def _trim_history(history: list[HistoryMessage]) -> list[HistoryMessage]:
 
 
 class AIService:
-    def __init__(self, settings: Settings):
+    def __init__(self, settings: Settings, api_key: str | None = None):
         self._settings = settings
-        self._client = OpenAI(api_key=settings.openai_api_key) if settings.openai_api_key else None
+        # Use provided api_key, fall back to settings, or None if neither
+        effective_api_key = api_key or settings.openai_api_key
+        self._client = OpenAI(api_key=effective_api_key) if effective_api_key else None
 
     def answer(
         self,
