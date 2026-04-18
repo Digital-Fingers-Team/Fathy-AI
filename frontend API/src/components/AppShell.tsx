@@ -17,28 +17,8 @@ const nav = [
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, logout, isAuthenticated, isLoading } = useAuth();
+  const { user, isAuthenticated, isLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [userMenuOpen, setUserMenuOpen] = useState(false);
-
-  const handleLogout = async () => {
-    await logout();
-    setUserMenuOpen(false);
-    router.push("/auth/login");
-  };
-
-  const handleDeleteAccount = async () => {
-    if (!window.confirm("Are you sure you want to delete your account? This cannot be undone.")) {
-      return;
-    }
-    try {
-      // deleteAccount is already in the auth context
-      await useAuth().deleteAccount?.();
-      router.push("/auth/signup");
-    } catch (error) {
-      console.error("Failed to delete account:", error);
-    }
-  };
 
   // Show login page for auth pages
   if (pathname.startsWith("/auth/")) {
@@ -92,48 +72,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             </nav>
           )}
 
-          {/* User menu / Login button */}
+          {/* User info / Login button */}
           <div className="flex items-center gap-3">
             {isLoading ? (
               <div className="h-9 w-20 animate-pulse rounded-xl bg-[rgb(var(--border))]" />
             ) : isAuthenticated ? (
-              <div className="relative">
-                <button
-                  onClick={() => setUserMenuOpen(!userMenuOpen)}
-                  className="flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] px-3 py-1.5 text-sm transition hover:bg-[rgba(var(--primary),0.10)]"
-                >
-                  <div className="h-6 w-6 rounded-full bg-[rgb(var(--primary))]" />
-                  <span className="hidden text-[rgb(var(--fg))] sm:inline">{user?.username}</span>
-                  <svg
-                    className={clsx("h-4 w-4 transition", userMenuOpen && "rotate-180")}
-                    fill="none"
-                    stroke="currentColor"
-                    viewBox="0 0 24 24"
-                  >
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 14l-7 7m0 0l-7-7m7 7V3" />
-                  </svg>
-                </button>
-
-                {userMenuOpen && (
-                  <div className="absolute right-0 z-50 mt-2 w-48 rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-lg">
-                    <div className="border-b border-[rgb(var(--border))] px-4 py-3">
-                      <p className="text-xs text-[rgb(var(--muted))]">Logged in as</p>
-                      <p className="text-sm font-medium text-[rgb(var(--fg))]">{user?.email}</p>
-                    </div>
-                    <button
-                      onClick={handleLogout}
-                      className="w-full px-4 py-2 text-left text-sm text-[rgb(var(--muted))] transition hover:rounded-none hover:bg-[rgba(var(--primary),0.10)] hover:text-[rgb(var(--fg))]"
-                    >
-                      Log Out
-                    </button>
-                    <button
-                      onClick={handleDeleteAccount}
-                      className="w-full rounded-b-xl px-4 py-2 text-left text-sm text-red-500 transition hover:bg-red-500/10"
-                    >
-                      Delete Account
-                    </button>
-                  </div>
-                )}
+              <div className="flex items-center gap-2 rounded-xl border border-[rgb(var(--border))] px-3 py-1.5 text-sm">
+                <div className="h-6 w-6 rounded-full bg-[rgb(var(--primary))]" />
+                <span className="hidden text-[rgb(var(--fg))] sm:inline">{user?.username}</span>
               </div>
             ) : (
               <Link
@@ -209,29 +155,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     </Link>
                   );
                 })}
-              {isAuthenticated && (
-                <>
-                  <div className="my-2 border-t border-[rgb(var(--border))]" />
-                  <button
-                    onClick={() => {
-                      handleLogout();
-                      setMenuOpen(false);
-                    }}
-                    className="rounded-xl px-3 py-2.5 text-left text-sm text-[rgb(var(--muted))] transition hover:bg-[rgba(var(--primary),0.10)] hover:text-[rgb(var(--fg))]"
-                  >
-                    Log Out
-                  </button>
-                  <button
-                    onClick={() => {
-                      handleDeleteAccount();
-                      setMenuOpen(false);
-                    }}
-                    className="rounded-xl px-3 py-2.5 text-left text-sm text-red-500 transition hover:bg-red-500/10"
-                  >
-                    Delete Account
-                  </button>
-                </>
-              )}
             </div>
           </nav>
         )}

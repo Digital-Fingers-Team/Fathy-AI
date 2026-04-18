@@ -41,10 +41,6 @@ export function ApiKeyProvider({ children }: { children: React.ReactNode }) {
     }
   };
 
-  if (!isLoaded) {
-    return <>{children}</>;
-  }
-
   return (
     <ApiKeyContext.Provider
       value={{

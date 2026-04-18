@@ -5,8 +5,8 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
-import { useApiKey } from "@/lib/api-key-context";
-import { Button, Card, Pill, Textarea, Input } from "@/components/ui";
+import { Button, Card, Pill, Textarea } from "@/components/ui";
+import { getPrefs } from "@/components/ClientPrefs";
 
 type Msg = {
   role: "user" | "assistant";
@@ -35,6 +35,13 @@ function TagsRow({ tags }: { tags: string[] }) {
       ))}
     </div>
   );
+}
+
+function getWelcomeMessage(language: "en" | "ar"): string {
+  if (language === "ar") {
+    return "أنا فتحي (Fathy). اسألني أي شيء وسأساعدك في التعلم واكتشاف معلومات جديدة.";
+  }
+  return "I'm Fathy. Ask me anything and I'll help you learn and discover new facts.";
 }
 
 function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
@@ -67,25 +74,29 @@ function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
 }
 
 export function ChatClient() {
-  const { apiKey, setApiKey } = useApiKey();
-  const [tempApiKey, setTempApiKey] = useState("");
+  const [selectedModel, setSelectedModel] = useState("Fathy 1.1.1");
+  const [language, setLanguage] = useState<"en" | "ar">("en");
   const [messages, setMessages] = useState<Msg[]>([
     {
       role: "assistant",
-      content:
-        "أنا فتحي (Fathy). اسألني أي شيء، وعلّمني حقائق جديدة من صفحة Teach.\n\nI'm Fathy. Ask me anything, and teach me new facts from the Teach page."
+      content: getWelcomeMessage("en")
     }
   ]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Load API key from context
+  // Load language preference on mount
   useEffect(() => {
-    if (apiKey) {
-      setTempApiKey(apiKey);
-    }
-  }, [apiKey]);
+    const prefs = getPrefs();
+    setLanguage(prefs.language);
+    setMessages([
+      {
+        role: "assistant",
+        content: getWelcomeMessage(prefs.language)
+      }
+    ]);
+  }, []);
 
   // Auto-scroll to latest message.
   useEffect(() => {
@@ -192,7 +203,22 @@ export function ChatClient() {
         </div>
 
         {/* Input area */}
-        <div className="mt-4 grid gap-2">
+        <div className="mt-4 grid gap-3">
+          {/* Model Selector */}
+          <div className="flex items-center gap-2">
+            <label className="text-xs font-medium text-[rgb(var(--muted))]">
+              AI Model:
+            </label>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="flex-1 rounded-xl border border-[rgb(var(--border))] bg-transparent px-3 py-2 text-sm focus:ring-2 focus:ring-[rgba(var(--primary),0.35)] outline-none"
+            >
+              <option value="Fathy 1.1.1">Fathy 1.1.1</option>
+            </select>
+          </div>
+
+          {/* Message Input */}
           <Textarea
             rows={3}
             value={input}
@@ -205,45 +231,15 @@ export function ChatClient() {
               }
             }}
           />
-          <div className="grid gap-2">
-            <div className="flex gap-2 items-end">
-              <div className="flex-1">
-                <label className="text-xs font-medium text-[rgb(var(--muted))] block mb-1">
-                  OpenAI API Key (optional)
-                </label>
-                <Input
-                  type="password"
-                  placeholder="sk-... (stored locally)"
-                  value={tempApiKey}
-                  onChange={(e) => {
-                    setTempApiKey(e.target.value);
-                    if (e.target.value) {
-                      setApiKey(e.target.value);
-                    }
-                  }}
-                />
-              </div>
-              {tempApiKey && (
-                <Button
-                  onClick={() => {
-                    setTempApiKey("");
-                    setApiKey("");
-                  }}
-                  variant="ghost"
-                  className="whitespace-nowrap"
-                >
-                  Clear
-                </Button>
-              )}
+
+          {/* Send Button */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-xs text-[rgb(var(--muted))]">
+              Enter to send · Shift+Enter for new line
             </div>
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs text-[rgb(var(--muted))]">
-                Enter to send · Shift+Enter for new line
-              </div>
-              <Button onClick={onSend} disabled={!canSend}>
-                {loading ? "Thinking…" : "Send"}
-              </Button>
-            </div>
+            <Button onClick={onSend} disabled={!canSend}>
+              {loading ? "Thinking…" : "Send"}
+            </Button>
           </div>
         </div>
       </Card>

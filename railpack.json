@@ -1,0 +1,34 @@
+{
+  "$schema": "https://schema.railpack.com",
+
+  "provider": "python",
+
+  "packages": {
+    "python": "3.11"
+  },
+
+  "buildAptPackages": ["curl", "git"],
+
+  "steps": {
+    "install": {
+      "cwd": "backend API",
+      "commands": ["pip install -r requirements.txt"]
+    },
+
+    "start": {
+      "inputs": [{ "step": "install" }],
+      "cwd": "backend API",
+      "commands": ["python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"]
+    }
+  },
+
+  "deploy": {
+    "startCommand": "python -m uvicorn app.main:app --host 0.0.0.0 --port 8000"
+  },
+
+  "caches": {
+    "pip": {
+      "directory": "/root/.cache/pip"
+    }
+  }
+}
