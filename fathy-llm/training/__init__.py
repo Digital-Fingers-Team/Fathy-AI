@@ -30,3 +30,4 @@ __all__ = [
     "linear_decay_lr_lambda",
     "preference_loss",
 ]
+"""Training utilities for Fathy LLM."""
