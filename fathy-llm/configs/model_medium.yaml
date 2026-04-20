@@ -1,0 +1,59 @@
+model:
+  name: fathy-medium
+  architecture: decoder_only_transformer
+  vocab_size: 64000
+  max_seq_len: 8192
+  hidden_size: 2560
+  intermediate_size: 10240
+  num_layers: 32
+  num_attention_heads: 32
+  num_key_value_heads: 8
+  rotary_pct: 1.0
+  rope_theta: 1000000
+  rms_norm_eps: 1.0e-6
+  tie_word_embeddings: false
+  use_flash_attention: true
+
+training:
+  stage: pretrain
+  seed: 42
+  precision: bf16
+  global_batch_size: 1024
+  micro_batch_size_per_gpu: 4
+  gradient_accumulation_steps: 16
+  learning_rate: 2.0e-4
+  min_learning_rate: 2.0e-5
+  warmup_steps: 4000
+  lr_scheduler: cosine
+  weight_decay: 0.1
+  max_steps: 500000
+  gradient_checkpointing: true
+  max_grad_norm: 1.0
+  optimizer: adamw
+  betas: [0.9, 0.95]
+  checkpoint_interval_steps: 1000
+  eval_interval_steps: 1000
+  log_interval_steps: 10
+
+constitutional:
+  enabled: true
+  schema_version: v1
+  principles:
+    - "Be truthful; do not fabricate facts or citations."
+    - "Respect user safety boundaries and refuse harmful misuse."
+    - "Preserve privacy; avoid leaking personal or sensitive data."
+    - "Be fair and avoid hateful, harassing, or discriminatory output."
+    - "Admit uncertainty and ask clarifying questions when needed."
+  moderation:
+    policy_engine: rule_plus_model
+    unsafe_categories:
+      - self_harm
+      - violence
+      - weapons
+      - sexual_content_minor
+      - hate
+      - criminal_planning
+  rlhf_objectives:
+    helpfulness_weight: 0.45
+    harmlessness_weight: 0.45
+    honesty_weight: 0.10
