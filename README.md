@@ -83,7 +83,7 @@ python -m uvicorn app.main:app --reload
 Install Node.js 18+ (or 20+), then:
 
 ```bash
-cd "frontend API"
+cd "frontend"
 copy example.env .env.local
 npm install
 ```
