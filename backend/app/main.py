@@ -16,6 +16,7 @@ from app.routes.chat import router as chat_router
 from app.routes.health import router as health_router
 from app.routes.memory import router as memory_router
 from app.routes.teach import router as teach_router
+from app.serving import AuthMiddleware, RateLimitMiddleware, create_router as create_serving_router
 
 
 @asynccontextmanager
@@ -87,6 +88,17 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="", tags=["chat"])
     app.include_router(teach_router, prefix="", tags=["teach"])
     app.include_router(memory_router, prefix="", tags=["memory"])
+
+    app.add_middleware(RateLimitMiddleware, requests_per_minute=settings.serving_rate_limit_rpm)
+    if settings.serving_auth_enabled:
+        app.add_middleware(
+            AuthMiddleware,
+            api_keys=settings.serving_api_keys,
+            jwt_secret=settings.serving_jwt_secret,
+            exempt_paths={"/health", "/docs", "/openapi.json"},
+        )
+
+    app.include_router(create_serving_router(), prefix="", tags=["serving"])
 
     return app
 
