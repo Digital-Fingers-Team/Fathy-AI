@@ -2,8 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, Integer, String, Text, Boolean
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy import Boolean, DateTime, ForeignKey, Integer, String, Text
+from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 
 class Base(DeclarativeBase):
@@ -25,13 +25,23 @@ class User(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+    memories: Mapped[list["MemoryItem"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+    )
 
 
 class MemoryItem(Base):
     __tablename__ = "memory_items"
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    user_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
     question: Mapped[str] = mapped_column(Text, nullable=False)
     answer: Mapped[str] = mapped_column(Text, nullable=False)
     tags_csv: Mapped[str] = mapped_column(String(512), nullable=False, default="")
@@ -42,3 +52,4 @@ class MemoryItem(Base):
         default=datetime.utcnow,
         onupdate=datetime.utcnow,
     )
+    user: Mapped[User] = relationship(back_populates="memories")

@@ -1,11 +1,11 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.orm import Session
 
 from app.core.logging import get_logger
-from app.db.models import User
+from app.db.models import MemoryItem, User
 from app.db.session import get_db
 from app.routes.dependencies import get_current_user
 from app.schemas.auth import (
@@ -119,6 +119,9 @@ async def delete_account(
     """Delete the current user's account."""
     user_email = current_user.email
     
+    # Delete user-owned memories first for compatibility with existing DBs
+    db.execute(delete(MemoryItem).where(MemoryItem.user_id == current_user.id))
+
     # Delete user
     db.delete(current_user)
     db.commit()
