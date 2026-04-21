@@ -5,6 +5,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
+import { useApiKey } from "@/lib/api-key-context";
 import { Button, Card, Pill, Textarea } from "@/components/ui";
 import { getPrefs } from "@/components/ClientPrefs";
 
@@ -74,6 +75,7 @@ function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
 }
 
 export function ChatClient() {
+  const { apiKey } = useApiKey();
   const [selectedModel, setSelectedModel] = useState("Fathy 1.1.1");
   const [language, setLanguage] = useState<"en" | "ar">("en");
   const [messages, setMessages] = useState<Msg[]>([
@@ -121,7 +123,7 @@ export function ChatClient() {
     const historySnapshot = buildHistory([...messages]);
 
     try {
-      const res = await api.chat(text, historySnapshot, tempApiKey || undefined);
+      const res = await api.chat(text, historySnapshot, apiKey || undefined);
       setMessages((prev) => [
         ...prev,
         {

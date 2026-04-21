@@ -86,17 +86,15 @@ export const tokenManager = {
 };
 
 async function req<T>(path: string, init?: RequestInit, requiresAuth = false): Promise<T> {
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(init?.headers ?? {})
-  };
+  const headers = new Headers(init?.headers);
+  headers.set("Content-Type", "application/json");
 
   if (requiresAuth) {
     const token = tokenManager.getToken();
     if (!token) {
       throw new Error("Authentication required");
     }
-    headers["Authorization"] = `Bearer ${token}`;
+    headers.set("Authorization", `Bearer ${token}`);
   }
 
   const res = await fetch(`${API_BASE}${path}`, {
@@ -144,11 +142,11 @@ export const api = {
     req<ChatResponse>("/chat", {
       method: "POST",
       body: JSON.stringify({ message, history, api_key: apiKey })
-    }),
+    }, true),
 
   // Teach endpoints
   teach: (payload: { question: string; answer: string; tags: string[] }) =>
-    req<MemoryItem>("/teach", { method: "POST", body: JSON.stringify(payload) }),
+    req<MemoryItem>("/teach", { method: "POST", body: JSON.stringify(payload) }, true),
 
   // Memory endpoints
   memoryList: (q?: string, offset = 0, limit = 20) => {
@@ -156,11 +154,11 @@ export const api = {
     if (q) params.set("q", q);
     params.set("offset", String(offset));
     params.set("limit", String(limit));
-    return req<MemoryListResponse>(`/memory?${params.toString()}`);
+    return req<MemoryListResponse>(`/memory?${params.toString()}`, {}, true);
   },
 
   memoryDelete: (id: number) =>
-    req<{ deleted: boolean; id: number }>(`/memory/${id}`, { method: "DELETE" }),
+    req<{ deleted: boolean; id: number }>(`/memory/${id}`, { method: "DELETE" }, true),
 
   memoryUpdate: (
     id: number,
@@ -169,5 +167,5 @@ export const api = {
     req<MemoryItem>(`/memory/${id}`, {
       method: "PUT",
       body: JSON.stringify(payload)
-    })
+    }, true)
 };

@@ -59,9 +59,9 @@ class MemoryService:
     def __init__(self, repo: MemoryRepository):
         self._repo = repo
 
-    def search(self, query: str, *, limit: int = 5) -> list[ScoredMemory]:
+    def search(self, query: str, *, user_id: int, limit: int = 5) -> list[ScoredMemory]:
         # Pull a bounded candidate set, then rank in Python.
-        candidates, _ = self._repo.list(q=None, offset=0, limit=300)
+        candidates, _ = self._repo.list(user_id=user_id, q=None, offset=0, limit=300)
 
         query_norm = _normalize(query)
         query_tokens = _tokens(query_norm)

@@ -42,6 +42,8 @@ async def lifespan(app: FastAPI):
 
 def create_app() -> FastAPI:
     settings = get_settings()
+    if not settings.secret_key or settings.secret_key == "changeme":
+        raise RuntimeError("Invalid SECRET_KEY: set a non-default secret before starting the app.")
 
     app = FastAPI(
         title=settings.app_name,

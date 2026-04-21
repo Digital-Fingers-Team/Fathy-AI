@@ -42,18 +42,19 @@ class MemoryRepository:
     def __init__(self, db: Session):
         self._db = db
 
-    def create(self, question: str, answer: str, tags: list[str]) -> MemoryItem:
-        item = MemoryItem(question=question, answer=answer, tags_csv=_tags_to_csv(tags))
+    def create(self, user_id: int, question: str, answer: str, tags: list[str]) -> MemoryItem:
+        item = MemoryItem(user_id=user_id, question=question, answer=answer, tags_csv=_tags_to_csv(tags))
         self._db.add(item)
         self._db.commit()
         self._db.refresh(item)
         return item
 
-    def get(self, item_id: int) -> MemoryItem | None:
-        return self._db.get(MemoryItem, item_id)
+    def get(self, item_id: int, *, user_id: int) -> MemoryItem | None:
+        stmt = select(MemoryItem).where(MemoryItem.id == item_id, MemoryItem.user_id == user_id)
+        return self._db.execute(stmt).scalar_one_or_none()
 
-    def delete(self, item_id: int) -> bool:
-        item = self.get(item_id)
+    def delete(self, item_id: int, *, user_id: int) -> bool:
+        item = self.get(item_id, user_id=user_id)
         if item is None:
             return False
         self._db.delete(item)
@@ -63,12 +64,13 @@ class MemoryRepository:
     def update(
         self,
         item_id: int,
+        user_id: int,
         *,
         question: str | None = None,
         answer: str | None = None,
         tags: list[str] | None = None,
     ) -> MemoryItem | None:
-        item = self.get(item_id)
+        item = self.get(item_id, user_id=user_id)
         if item is None:
             return None
         if question is not None:
@@ -84,10 +86,10 @@ class MemoryRepository:
         return item
 
     def list(
-        self, *, q: str | None = None, offset: int = 0, limit: int = 50
+        self, *, user_id: int, q: str | None = None, offset: int = 0, limit: int = 50
     ) -> tuple[list[MemoryItem], int]:
-        stmt = select(MemoryItem)
-        count_stmt = select(func.count(MemoryItem.id))
+        stmt = select(MemoryItem).where(MemoryItem.user_id == user_id)
+        count_stmt = select(func.count(MemoryItem.id)).where(MemoryItem.user_id == user_id)
 
         if q:
             like = f"%{q}%"
