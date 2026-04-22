@@ -17,7 +17,7 @@ from .scheduler import (
     cosine_decay_lr_lambda,
     linear_decay_lr_lambda,
 )
-from .lora import apply_lora
+from .lora import LoRALayer, apply_lora, merge_lora_weights
 from .sft import SFTConfig, SFTTrainer
 
 __all__ = [
@@ -33,7 +33,9 @@ __all__ = [
     "RewardModelConfig",
     "SFTConfig",
     "SFTTrainer",
+    "LoRALayer",
     "apply_lora",
+    "merge_lora_weights",
     "SchedulerConfig",
     "TrainingLoopConfig",
     "build_cosine_scheduler",
@@ -43,4 +45,3 @@ __all__ = [
     "linear_decay_lr_lambda",
     "preference_loss",
 ]
-"""Training utilities for Fathy LLM."""
