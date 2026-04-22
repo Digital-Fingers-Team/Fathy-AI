@@ -1,6 +1,12 @@
 """Training primitives for pretraining, SFT, reward modeling, and RLHF."""
 
-from .dataset import PaddingConfig, RLHFHyperparameters
+from .dataset import (
+    InstructionDataset,
+    PaddingConfig,
+    PretrainingDataset,
+    RLHFHyperparameters,
+    language_modeling_collate_fn,
+)
 from .pretrain import PretrainTrainer, TrainingLoopConfig
 from .reward_model import RewardModel, RewardModelConfig, preference_loss
 from .rlhf import RLHFConfig, RLHFTrainer
@@ -14,7 +20,9 @@ from .scheduler import (
 from .sft import SFTTrainer
 
 __all__ = [
+    "InstructionDataset",
     "PaddingConfig",
+    "PretrainingDataset",
     "RLHFConfig",
     "RLHFHyperparameters",
     "RLHFTrainer",
@@ -27,6 +35,7 @@ __all__ = [
     "build_cosine_scheduler",
     "build_linear_scheduler",
     "cosine_decay_lr_lambda",
+    "language_modeling_collate_fn",
     "linear_decay_lr_lambda",
     "preference_loss",
 ]
