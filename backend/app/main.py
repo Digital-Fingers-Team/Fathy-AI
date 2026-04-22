@@ -13,10 +13,12 @@ from app.core.logging import configure_logging, get_logger
 from app.db.session import init_db
 from app.routes.auth import router as auth_router
 from app.routes.chat import router as chat_router
+from app.routes.conversations import router as conversations_router
 from app.routes.health import router as health_router
 from app.routes.memory import router as memory_router
 from app.routes.teach import router as teach_router
 from app.serving import AuthMiddleware, RateLimitMiddleware, create_router as create_serving_router
+from app.serving.api import FathyInferenceBackend
 
 
 @asynccontextmanager
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
 
     logger.info("Starting up", extra={"app_name": settings.app_name, "env": settings.environment})
     init_db(settings.database_url)
-    logger.info("Database initialized")
+    logger.info("Database initialized (SQLAlchemy create_all auto-creates new tables, including conversations)")
 
     # Initialize long-lived services (no background "self-learning" claims; this is a wrapper/client init).
     from app.services.ai_service import AIService
@@ -90,6 +92,7 @@ def create_app() -> FastAPI:
     app.include_router(chat_router, prefix="", tags=["chat"])
     app.include_router(teach_router, prefix="", tags=["teach"])
     app.include_router(memory_router, prefix="", tags=["memory"])
+    app.include_router(conversations_router, prefix="", tags=["conversations"])
 
     app.add_middleware(RateLimitMiddleware, requests_per_minute=settings.serving_rate_limit_rpm)
     if settings.serving_auth_enabled:
@@ -100,7 +103,7 @@ def create_app() -> FastAPI:
             exempt_paths={"/health", "/docs", "/openapi.json"},
         )
 
-    app.include_router(create_serving_router(), prefix="", tags=["serving"])
+    app.include_router(create_serving_router(FathyInferenceBackend(settings)), prefix="", tags=["serving"])
 
     return app
 

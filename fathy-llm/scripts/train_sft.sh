@@ -17,7 +17,7 @@ export MASTER_ADDR="${MASTER_ADDR:-127.0.0.1}"
 export MASTER_PORT="${MASTER_PORT:-29501}"
 
 CONFIG_PATH="${CONFIG_PATH:-fathy-llm/configs/model_medium.yaml}"
-TRAIN_SCRIPT="${TRAIN_SCRIPT:-fathy_llm/train/sft.py}"
+TRAIN_SCRIPT="${TRAIN_SCRIPT:-fathy-llm/training/sft.py}"
 TRAIN_DATA="${TRAIN_DATA:-/data/sft/train.jsonl}"
 EVAL_DATA="${EVAL_DATA:-/data/sft/eval.jsonl}"
 OUTPUT_DIR="${OUTPUT_DIR:-/checkpoints/fathy/sft}"

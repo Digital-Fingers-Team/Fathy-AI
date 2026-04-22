@@ -16,6 +16,7 @@ export type ChatResponse = {
   used_memory: RetrievedMemory[];
   model?: string | null;
   note?: string | null;
+  conversation_id?: number | null;
 };
 
 export type MemoryItem = {
@@ -138,10 +139,10 @@ export const api = {
   },
 
   // Chat endpoints
-  chat: (message: string, history: HistoryMessage[] = [], apiKey?: string) =>
+  chat: (message: string, history: HistoryMessage[] = [], apiKey?: string, conversationId?: number | null) =>
     req<ChatResponse>("/chat", {
       method: "POST",
-      body: JSON.stringify({ message, history, api_key: apiKey })
+      body: JSON.stringify({ message, history, api_key: apiKey, conversation_id: conversationId })
     }, true),
 
   // Teach endpoints
@@ -159,6 +160,30 @@ export const api = {
 
   memoryDelete: (id: number) =>
     req<{ deleted: boolean; id: number }>(`/memory/${id}`, { method: "DELETE" }, true),
+
+
+  conversations: {
+    list: () =>
+      req<{ items: Array<{id: number; title: string; updated_at: string}> }>(
+        "/conversations", {}, true
+      ),
+    create: () =>
+      req<{id: number; title: string}>(
+        "/conversations", { method: "POST", body: JSON.stringify({}) }, true
+      ),
+    getMessages: (id: number) =>
+      req<{messages: Array<{role: string; content: string; created_at: string}>}>(
+        `/conversations/${id}/messages`, {}, true
+      ),
+    delete: (id: number) =>
+      req<{deleted: boolean}>(`/conversations/${id}`, { method: "DELETE" }, true),
+    updateTitle: (id: number, title: string) =>
+      req<{id: number; title: string}>(
+        `/conversations/${id}/title`,
+        { method: "PATCH", body: JSON.stringify({ title }) },
+        true
+      ),
+  },
 
   memoryUpdate: (
     id: number,
