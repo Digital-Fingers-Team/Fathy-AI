@@ -13,7 +13,7 @@ from typing import Any
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader, Dataset
 
 from .dataset import PretrainingDataset, language_modeling_collate_fn
 from .scheduler import SchedulerConfig, build_cosine_scheduler
@@ -46,15 +46,15 @@ class TrainingLoopConfig:
 
 
 class PreTrainer:
-    def __init__(self, model: torch.nn.Module, train_dataset: PretrainingDataset | dict[str, Any], config: TrainingLoopConfig) -> None:
+    def __init__(self, model: torch.nn.Module, train_dataset: Dataset[dict[str, torch.Tensor]] | dict[str, Any], config: TrainingLoopConfig) -> None:
         self.model = model
         self.config = config
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-        if isinstance(train_dataset, PretrainingDataset):
-            self.train_dataset = train_dataset
-        else:
+        if isinstance(train_dataset, dict):
             self.train_dataset = PretrainingDataset(**train_dataset)
+        else:
+            self.train_dataset = train_dataset
 
         if self.config.gradient_checkpointing and hasattr(self.model, "gradient_checkpointing_enable"):
             self.model.gradient_checkpointing_enable()
