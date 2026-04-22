@@ -5,9 +5,7 @@ import torch
 
 
 MODULE_CANDIDATES = [
-    "fathy_llm.model.norms",
-    "fathy_llm.models.norms",
-    "fathy_llm.modules.norms",
+    "architecture.normalization",
 ]
 
 

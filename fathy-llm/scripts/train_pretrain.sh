@@ -20,7 +20,7 @@ export MASTER_PORT="${MASTER_PORT:-29500}"
 
 # Experiment arguments
 CONFIG_PATH="${CONFIG_PATH:-fathy-llm/configs/model_small.yaml}"
-TRAIN_SCRIPT="${TRAIN_SCRIPT:-fathy_llm/train/pretrain.py}"
+TRAIN_SCRIPT="${TRAIN_SCRIPT:-fathy-llm/training/pretrain.py}"
 DATA_PATH="${DATA_PATH:-/data/pretrain}"
 OUTPUT_DIR="${OUTPUT_DIR:-/checkpoints/fathy/pretrain}"
 RUN_NAME="${RUN_NAME:-fathy-pretrain}"

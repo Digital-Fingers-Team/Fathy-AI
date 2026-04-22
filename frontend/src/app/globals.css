@@ -36,3 +36,22 @@ body {
 body {
   font-feature-settings: "kern";
 }
+
+@keyframes blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0; }
+}
+
+.typing-cursor::after {
+  content: "▋";
+  animation: blink 0.9s step-start infinite;
+  color: rgb(var(--primary));
+  margin-left: 2px;
+}
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.msg-appear { animation: fadeSlideIn 0.18s ease-out; }

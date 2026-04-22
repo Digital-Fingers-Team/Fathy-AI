@@ -9,6 +9,9 @@ from typing import Any, Protocol
 from fastapi import APIRouter, HTTPException, status
 from fastapi.responses import StreamingResponse
 
+from app.core.config import Settings
+from app.services.ai_service import AIService, HistoryMessage
+
 from .schemas import (
     AnthropicMessageResponse,
     AnthropicMessagesRequest,
@@ -37,18 +40,35 @@ class ModelSpec:
     supports_streaming: bool = True
 
 
-class EchoInferenceBackend:
-    """Default backend to keep serving layer runnable out-of-the-box."""
+class FathyInferenceBackend:
+    """Connects the serving layer to the real Fathy AI service."""
+
+    def __init__(self, settings: Settings):
+        self._ai = AIService(settings)
 
     def generate(self, request: InferenceRequest) -> InferenceResponse:
-        prompt = request.messages[-1].content if request.messages else ""
-        output = f"Echo: {prompt}" if prompt else "Echo:"
+        history: list[HistoryMessage] = []
+        last_user_message = ""
+
+        for msg in request.messages:
+            if msg.role not in {"user", "assistant"}:
+                continue
+            history.append(HistoryMessage(role=msg.role, content=msg.content))
+            if msg.role == "user":
+                last_user_message = msg.content
+
+        if not last_user_message:
+            last_user_message = request.messages[-1].content if request.messages else ""
+
+        prior_history = history[:-1] if history and history[-1].role == "user" else history
+        result = self._ai.answer(last_user_message, memories=[], history=prior_history)
+
         return InferenceResponse(
             id=f"msg_{uuid.uuid4().hex[:24]}",
             model=request.model,
-            output_text=output,
-            input_tokens=max(1, len(prompt.split())),
-            output_tokens=max(1, len(output.split())),
+            output_text=result.answer,
+            input_tokens=max(1, len(last_user_message.split())),
+            output_tokens=max(1, len(result.answer.split())),
         )
 
 
@@ -145,7 +165,9 @@ def _inference_to_openai(response: InferenceResponse) -> OpenAIChatCompletionRes
 
 
 def create_router(backend: InferenceBackend | None = None) -> APIRouter:
-    inference_backend = backend or EchoInferenceBackend()
+    if backend is None:
+        raise RuntimeError("Serving backend must be provided")
+    inference_backend = backend
     router = APIRouter(prefix="/v1", tags=["serving"])
 
     @router.post("/messages", response_model=AnthropicMessageResponse)

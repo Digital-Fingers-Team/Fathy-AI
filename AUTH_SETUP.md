@@ -152,3 +152,20 @@ Edit `.env` file - update `CORS_ORIGINS` for production
 ---
 
 Your authentication system is now fully functional and ready to use! 🎉
+
+## 🧠 Conversation Endpoints (Authenticated)
+
+The API now includes persistent conversation management endpoints. All routes below require a Bearer token:
+
+- `GET /conversations` → list latest 50 conversations for current user
+- `POST /conversations` → create a conversation (`{id, title}`)
+- `GET /conversations/{id}/messages` → fetch full message history for one conversation
+- `DELETE /conversations/{id}` → delete a conversation and all related messages
+- `PATCH /conversations/{id}/title` → rename a conversation
+
+### Chat endpoint additions
+
+- `POST /chat` now accepts optional `conversation_id` and returns `conversation_id` in the response.
+- `POST /chat/stream` streams SSE events (`memory` → `chunk`* → `done`) and also supports `conversation_id`.
+
+> Note: database table creation is still automatic via SQLAlchemy `Base.metadata.create_all(...)`, so the new `conversations` and `chat_messages` tables are created on startup when missing.

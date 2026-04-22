@@ -1,14 +1,14 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+import asyncio
+from collections.abc import AsyncGenerator
+from dataclasses import dataclass
 
 from openai import OpenAI
 
 from app.core.config import Settings
 from app.services.memory_service import ScoredMemory
 
-# Maximum number of past turns (user+assistant pairs) to send.
-# Keeps context window manageable while preserving recent conversation flow.
 MAX_HISTORY_TURNS = 10
 
 SYSTEM_PROMPT = (
@@ -31,7 +31,7 @@ SYSTEM_PROMPT = (
 
 @dataclass(frozen=True)
 class HistoryMessage:
-    role: str  # "user" | "assistant"
+    role: str
     content: str
 
 
@@ -54,7 +54,6 @@ def _build_known_facts(memories: list[ScoredMemory]) -> str:
 
 
 def _trim_history(history: list[HistoryMessage]) -> list[HistoryMessage]:
-    """Keep only the last MAX_HISTORY_TURNS pairs to avoid bloating the context."""
     max_msgs = MAX_HISTORY_TURNS * 2
     if len(history) > max_msgs:
         return history[-max_msgs:]
@@ -64,9 +63,34 @@ def _trim_history(history: list[HistoryMessage]) -> list[HistoryMessage]:
 class AIService:
     def __init__(self, settings: Settings, api_key: str | None = None):
         self._settings = settings
-        # Use provided api_key, fall back to settings, or None if neither
         effective_api_key = api_key or settings.openai_api_key
         self._client = OpenAI(api_key=effective_api_key) if effective_api_key else None
+
+    def _build_messages(
+        self,
+        message: str,
+        memories: list[ScoredMemory],
+        history: list[HistoryMessage] | None = None,
+    ) -> list[dict[str, str]]:
+        known = _build_known_facts(memories)
+        user_content = f"{message}\n\n{known}" if known else message
+        messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
+        for h in _trim_history(history or []):
+            messages.append({"role": h.role, "content": h.content})
+        messages.append({"role": "user", "content": user_content})
+        return messages
+
+    def _fallback_text(self, memories: list[ScoredMemory]) -> tuple[str, str]:
+        if memories:
+            best = memories[0].item.answer
+            return (
+                f"*(No AI model — answering from stored memory only)*\n\n{best}",
+                "OPENAI_API_KEY missing; answered from stored memory only.",
+            )
+        return (
+            "I can't call the AI model (`OPENAI_API_KEY` not set) and I have no relevant stored memory yet.",
+            "OPENAI_API_KEY missing; no stored memory matched.",
+        )
 
     def answer(
         self,
@@ -74,51 +98,62 @@ class AIService:
         memories: list[ScoredMemory],
         history: list[HistoryMessage] | None = None,
     ) -> AIResult:
-        known = _build_known_facts(memories)
-
-        # Inject known facts as a suffix on the latest user message so the
-        # model sees them in context without polluting the history.
-        user_content = message
-        if known:
-            user_content = f"{message}\n\n{known}"
-
         if not self._client:
-            # No model available — answer from memory only.
-            if memories:
-                best = memories[0].item.answer
-                return AIResult(
-                    answer=(
-                        f"*(No AI model — answering from stored memory only)*\n\n{best}"
-                    ),
-                    model=None,
-                    note="OPENAI_API_KEY missing; answered from stored memory only.",
-                )
-            return AIResult(
-                answer=(
-                    "I can't call the AI model (`OPENAI_API_KEY` not set) "
-                    "and I have no relevant stored memory yet."
-                ),
-                model=None,
-                note="OPENAI_API_KEY missing; no stored memory matched.",
-            )
+            text, note = self._fallback_text(memories)
+            return AIResult(answer=text, model=None, note=note)
 
-        # Build the messages list: system → history → current user turn.
-        messages: list[dict[str, str]] = [{"role": "system", "content": SYSTEM_PROMPT}]
-
-        trimmed = _trim_history(history or [])
-        for h in trimmed:
-            messages.append({"role": h.role, "content": h.content})
-
-        messages.append({"role": "user", "content": user_content})
-
+        messages = self._build_messages(message, memories, history)
         response = self._client.chat.completions.create(
             model=self._settings.model_name,
             messages=messages,  # type: ignore[arg-type]
             temperature=0.7,
         )
-
-        text = (response.choices[0].message.content or "").strip()
-        if not text:
-            text = "I couldn't generate a response."
-
+        text = (response.choices[0].message.content or "").strip() or "I couldn't generate a response."
         return AIResult(answer=text, model=self._settings.model_name)
+
+    async def stream_answer(
+        self,
+        message: str,
+        memories: list[ScoredMemory],
+        history: list[HistoryMessage] | None = None,
+    ) -> AsyncGenerator[str, None]:
+        if not self._client:
+            text, _ = self._fallback_text(memories)
+            yield text
+            return
+
+        messages = self._build_messages(message, memories, history)
+        stream = await asyncio.to_thread(
+            self._client.chat.completions.create,
+            model=self._settings.model_name,
+            messages=messages,
+            temperature=0.7,
+            stream=True,
+        )
+
+        for chunk in stream:
+            delta = chunk.choices[0].delta.content if chunk.choices else None
+            if delta:
+                yield delta
+                await asyncio.sleep(0)
+
+    def generate_title(self, first_message: str) -> str:
+        """Generate a short conversation title from the first user message."""
+        if not self._client:
+            return first_message[:40]
+
+        response = self._client.chat.completions.create(
+            model=self._settings.model_name,
+            messages=[
+                {
+                    "role": "user",
+                    "content": (
+                        "Generate a short title (max 6 words, no quotes) "
+                        f"for a conversation that starts with: {first_message[:200]}"
+                    ),
+                }
+            ],
+            max_tokens=20,
+            temperature=0.3,
+        )
+        return (response.choices[0].message.content or first_message[:40]).strip()

@@ -5,9 +5,7 @@ import torch
 
 
 MODULE_CANDIDATES = [
-    "fathy_llm.model.attention",
-    "fathy_llm.models.attention",
-    "fathy_llm.modules.attention",
+    "architecture.attention",
 ]
 
 
@@ -30,12 +28,16 @@ def _load_gqa_class():
 def gqa_module():
     torch.manual_seed(0)
     GQA = _load_gqa_class()
+    from architecture.config import ModelConfig
     return GQA(
-        hidden_size=128,
-        num_attention_heads=8,
-        num_key_value_heads=2,
-        max_position_embeddings=128,
-        dropout=0.0,
+        ModelConfig(
+            hidden_size=128,
+            num_attention_heads=8,
+            num_key_value_heads=2,
+            max_position_embeddings=128,
+            attention_dropout=0.0,
+            use_flash_attention=False,
+        )
     )
 
 
