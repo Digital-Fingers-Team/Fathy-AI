@@ -7,7 +7,7 @@ from .dataset import (
     RLHFHyperparameters,
     language_modeling_collate_fn,
 )
-from .pretrain import PretrainTrainer, TrainingLoopConfig
+from .pretrain import PreTrainer, PretrainTrainer, TrainingLoopConfig
 from .reward_model import RewardModel, RewardModelConfig, preference_loss
 from .rlhf import RLHFConfig, RLHFTrainer
 from .scheduler import (
@@ -26,6 +26,7 @@ __all__ = [
     "RLHFConfig",
     "RLHFHyperparameters",
     "RLHFTrainer",
+    "PreTrainer",
     "PretrainTrainer",
     "RewardModel",
     "RewardModelConfig",

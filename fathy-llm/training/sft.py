@@ -4,22 +4,14 @@ from __future__ import annotations
 
 import torch
 
-from .pretrain import PretrainTrainer, TrainingLoopConfig
+from .pretrain import PreTrainer, TrainingLoopConfig
 
 
-class SFTTrainer(PretrainTrainer):
+class SFTTrainer(PreTrainer):
     """SFT trainer shares pretraining mechanics but tags checkpoints/logging as `sft`."""
 
-    def __init__(
-        self,
-        model: torch.nn.Module,
-        optimizer: torch.optim.Optimizer,
-        scheduler,
-        config: TrainingLoopConfig,
-        device: torch.device,
-        logger=None,
-    ) -> None:
-        super().__init__(model, optimizer, scheduler, config, device, logger=logger)
+    def __init__(self, model: torch.nn.Module, train_dataset, config: TrainingLoopConfig) -> None:
+        super().__init__(model=model, train_dataset=train_dataset, config=config)
 
-    def train(self, dataloader):
-        return super().train(dataloader, phase="sft")
+    def train(self) -> None:
+        super().train(phase="sft")
