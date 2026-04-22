@@ -27,6 +27,11 @@ RUN_NAME="${RUN_NAME:-fathy-pretrain}"
 
 # Backend: torchrun or deepspeed
 DIST_BACKEND="${DIST_BACKEND:-torchrun}"
+QUICK="${QUICK:-0}"
+QUICK_ARG=""
+if [[ "${QUICK}" == "1" ]]; then
+  QUICK_ARG="--quick"
+fi
 
 if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
   DEEPSPEED_CONFIG="${DEEPSPEED_CONFIG:-fathy-llm/configs/deepspeed_pretrain_zero3.json}"
@@ -40,6 +45,7 @@ if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
     --data_path "${DATA_PATH}" \
     --output_dir "${OUTPUT_DIR}" \
     --run_name "${RUN_NAME}" \
+    ${QUICK_ARG} \
     --deepspeed "${DEEPSPEED_CONFIG}"
 else
   torchrun \
@@ -52,5 +58,6 @@ else
     --config "${CONFIG_PATH}" \
     --data_path "${DATA_PATH}" \
     --output_dir "${OUTPUT_DIR}" \
-    --run_name "${RUN_NAME}"
+    --run_name "${RUN_NAME}" \
+    ${QUICK_ARG}
 fi

@@ -17,7 +17,8 @@ from .scheduler import (
     cosine_decay_lr_lambda,
     linear_decay_lr_lambda,
 )
-from .sft import SFTTrainer
+from .lora import apply_lora
+from .sft import SFTConfig, SFTTrainer
 
 __all__ = [
     "InstructionDataset",
@@ -30,7 +31,9 @@ __all__ = [
     "PretrainTrainer",
     "RewardModel",
     "RewardModelConfig",
+    "SFTConfig",
     "SFTTrainer",
+    "apply_lora",
     "SchedulerConfig",
     "TrainingLoopConfig",
     "build_cosine_scheduler",

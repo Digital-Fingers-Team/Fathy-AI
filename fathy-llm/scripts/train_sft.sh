@@ -23,6 +23,11 @@ EVAL_DATA="${EVAL_DATA:-/data/sft/eval.jsonl}"
 OUTPUT_DIR="${OUTPUT_DIR:-/checkpoints/fathy/sft}"
 RUN_NAME="${RUN_NAME:-fathy-sft}"
 DIST_BACKEND="${DIST_BACKEND:-torchrun}"
+QUICK="${QUICK:-0}"
+QUICK_ARG=""
+if [[ "${QUICK}" == "1" ]]; then
+  QUICK_ARG="--quick"
+fi
 
 if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
   DEEPSPEED_CONFIG="${DEEPSPEED_CONFIG:-fathy-llm/configs/deepspeed_sft_zero3.json}"
@@ -37,6 +42,7 @@ if [[ "${DIST_BACKEND}" == "deepspeed" ]]; then
     --eval_data "${EVAL_DATA}" \
     --output_dir "${OUTPUT_DIR}" \
     --run_name "${RUN_NAME}" \
+    ${QUICK_ARG} \
     --deepspeed "${DEEPSPEED_CONFIG}"
 else
   torchrun \
@@ -50,5 +56,6 @@ else
     --train_data "${TRAIN_DATA}" \
     --eval_data "${EVAL_DATA}" \
     --output_dir "${OUTPUT_DIR}" \
-    --run_name "${RUN_NAME}"
+    --run_name "${RUN_NAME}" \
+    ${QUICK_ARG}
 fi
