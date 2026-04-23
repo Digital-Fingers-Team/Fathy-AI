@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
+import fathyLogo from "@/app/fathy.png";
 
 import { clsx } from "@/lib/clsx";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +18,6 @@ const nav = [
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
-  const router = useRouter();
   const { user, isAuthenticated, isLoading } = useAuth();
   const [menuOpen, setMenuOpen] = useState(false);
 
@@ -27,16 +28,20 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div className="mx-auto flex min-h-screen w-full max-w-6xl flex-col px-4 py-4">
-      <header className="rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] shadow-soft">
+      <header className="sticky top-0 z-40 border-b border-[rgb(var(--border))] backdrop-blur-md bg-white/90 dark:bg-[rgb(var(--card))]/90">
         <div className="flex items-center justify-between gap-3 px-4 py-3">
           {/* Logo */}
           <div className="flex items-center gap-3">
-            <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[rgb(var(--primary))] text-white font-bold text-lg">
-              ف
-            </div>
+            <Image
+              src={fathyLogo}
+              alt="Fathy Logo"
+              width={40}
+              height={40}
+              className="rounded-xl object-contain"
+            />
             <div className="leading-tight">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-semibold">
+                <span className="text-sm font-bold bg-gradient-to-r from-violet-600 to-purple-500 bg-clip-text text-transparent">
                   {process.env.NEXT_PUBLIC_APP_NAME || "Fathy"}
                 </span>
                 <span className="text-sm font-semibold text-[rgb(var(--muted))]">
@@ -59,10 +64,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     key={item.href}
                     href={item.href}
                     className={clsx(
-                      "rounded-xl px-3 py-2 text-sm transition",
+                      "px-3 py-2 text-sm font-medium transition",
                       active
-                        ? "bg-[rgba(var(--primary),0.12)] text-[rgb(var(--fg))]"
-                        : "text-[rgb(var(--muted))] hover:bg-[rgba(var(--primary),0.10)] hover:text-[rgb(var(--fg))]"
+                        ? "border-b-2 border-[rgb(var(--primary))] text-[rgb(var(--fg))]"
+                        : "text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
                     )}
                   >
                     {item.label}
@@ -145,10 +150,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                       href={item.href}
                       onClick={() => setMenuOpen(false)}
                       className={clsx(
-                        "rounded-xl px-3 py-2.5 text-sm transition",
+                        "px-3 py-2 text-sm font-medium transition",
                         active
-                          ? "bg-[rgba(var(--primary),0.12)] font-medium text-[rgb(var(--fg))]"
-                          : "text-[rgb(var(--muted))] hover:bg-[rgba(var(--primary),0.10)] hover:text-[rgb(var(--fg))]"
+                          ? "border-b-2 border-[rgb(var(--primary))] text-[rgb(var(--fg))]"
+                          : "text-[rgb(var(--muted))] hover:text-[rgb(var(--fg))]"
                       )}
                     >
                       {item.label}

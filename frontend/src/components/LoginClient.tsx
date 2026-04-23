@@ -1,10 +1,12 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import fathyLogo from "@/app/fathy.png";
 import { useAuth } from "@/lib/auth-context";
-import {clsx} from "@/lib/clsx";
+import { clsx } from "@/lib/clsx";
 
 export default function LoginClient() {
   const router = useRouter();
@@ -30,11 +32,14 @@ export default function LoginClient() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-800">
-      <div className="w-full max-w-md p-8 bg-slate-800/50 backdrop-blur rounded-lg shadow-xl border border-slate-700">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-[#0f0f1a] via-[#1a1035] to-[#0f0f1a]">
+      <div className="w-full max-w-md p-8 bg-white/5 backdrop-blur-xl rounded-2xl shadow-2xl border border-white/10">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Fathy</h1>
-          <p className="text-slate-400">Your AI Assistant</p>
+          <div className="flex flex-col items-center gap-3">
+            <Image src={fathyLogo} alt="Fathy Logo" width={64} height={64} className="rounded-2xl object-contain" />
+            <h1 className="text-3xl font-bold text-white">Fathy</h1>
+            <p className="text-slate-400">Your AI Assistant</p>
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -55,7 +60,7 @@ export default function LoginClient() {
               value={formData.email}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white/8 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
               placeholder="your@email.com"
             />
           </div>
@@ -71,7 +76,7 @@ export default function LoginClient() {
               value={formData.password}
               onChange={handleChange}
               required
-              className="w-full px-4 py-2 bg-slate-700 border border-slate-600 rounded text-white placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500"
+              className="w-full px-4 py-3 bg-white/8 border border-white/15 rounded-xl text-white placeholder-white/30 focus:outline-none focus:border-violet-500 focus:ring-1 focus:ring-violet-500 transition"
               placeholder="••••••••"
             />
           </div>
@@ -80,10 +85,8 @@ export default function LoginClient() {
             type="submit"
             disabled={isLoading}
             className={clsx(
-              "w-full py-2 px-4 rounded font-medium transition-colors",
-              isLoading
-                ? "bg-blue-600/50 text-blue-300 cursor-not-allowed"
-                : "bg-blue-600 hover:bg-blue-700 text-white"
+              "w-full py-3 px-4 rounded-xl font-semibold bg-gradient-to-r from-violet-600 to-purple-600 text-white hover:from-violet-700 hover:to-purple-700 transition-all shadow-lg disabled:opacity-50",
+              isLoading && "cursor-not-allowed"
             )}
           >
             {isLoading ? "Logging in..." : "Log In"}
@@ -93,7 +96,7 @@ export default function LoginClient() {
         <div className="mt-6 text-center">
           <p className="text-slate-400 text-sm">
             Don't have an account?{" "}
-            <Link href="/auth/signup" className="text-blue-400 hover:text-blue-300 font-medium">
+            <Link href="/auth/signup" className="text-violet-300 hover:text-violet-200 font-medium">
               Sign Up
             </Link>
           </p>
