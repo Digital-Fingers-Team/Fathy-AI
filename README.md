@@ -1,7 +1,12 @@
-# Fathy (فتحي) — Production-minded MVP
+# Fathy (فتحي) — Unified Project Guide
 
-Fathy is a bilingual (Arabic/English) AI assistant that **does not “self-train”**.  
-It simulates learning via a **real, explainable workflow**:
+This repository now uses a **single root markdown document** for setup, usage, auth, updates, and testing notes.
+
+---
+
+## Project Overview
+
+Fathy is a bilingual (Arabic/English) AI assistant that **does not “self-train”**. It simulates learning via an explainable workflow:
 
 - Persistent memory (SQLite)
 - Retrieval-first answering (RAG-style prompt injection)
@@ -9,7 +14,7 @@ It simulates learning via a **real, explainable workflow**:
 
 ## Monorepo
 
-```
+```text
 /backend
   /app
     main.py
@@ -42,9 +47,11 @@ It simulates learning via a **real, explainable workflow**:
   example.env
 ```
 
+---
+
 ## Backend (FastAPI)
 
-### 1) Setup
+### Setup
 
 ```bash
 cd "backend"
@@ -54,33 +61,33 @@ pip install -r requirements.txt
 copy example.env .env
 ```
 
-### 2) Run
+### Run
 
 ```bash
 uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
-```
-if not working :
+# if needed:
 python -m uvicorn app.main:app --reload
+```
 
-### API
+### API Endpoints
 
-- `GET  /health`
+- `GET /health`
 - `POST /chat` body: `{ "message": "..." }`
 - `POST /teach` body: `{ "question": "...", "answer": "...", "tags": ["..."] }`
-- `GET  /memory?q=...`
-- `PUT  /memory/{id}`
+- `GET /memory?q=...`
+- `PUT /memory/{id}`
 - `DELETE /memory/{id}`
 
-### Notes
+### Backend Notes
 
-- If `OPENAI_API_KEY` is **not** set, `/chat` will **not** call a model. It will answer from stored memory only (if any).
-- Memory ranking is currently token-overlap + substring boost + small recency boost, implemented in `backend/app/services/memory_service.py`.
+- If `OPENAI_API_KEY` is not set, `/chat` answers from stored memory only.
+- Memory ranking uses token-overlap + substring boost + recency boost in `backend/app/services/memory_service.py`.
+
+---
 
 ## Frontend (Next.js)
 
-### 1) Setup
-
-Install Node.js 18+ (or 20+), then:
+### Setup
 
 ```bash
 cd "frontend"
@@ -88,10 +95,9 @@ copy example.env .env.local
 npm install
 ```
 
-> The provided `frontend API/example.env` uses `VITE_API_URL` as requested.  
-> `frontend API/next.config.js` maps it to `NEXT_PUBLIC_API_URL` automatically.
+> The provided `frontend API/example.env` uses `VITE_API_URL`; `frontend API/next.config.js` maps it to `NEXT_PUBLIC_API_URL`.
 
-### 2) Run
+### Run
 
 ```bash
 npm run dev
@@ -102,12 +108,137 @@ Open:
 - Frontend: http://localhost:3000
 - Backend: http://localhost:8000
 
-## Upgrade path (Vector DB)
+---
 
-This MVP keeps memory in SQLite and ranks in Python for clarity and correctness.  
-To upgrade to vectors later:
+## Quick Start Testing Checklist
 
-- Add an `embedding` column (or a separate table) to `MemoryItem`
+### 1) Install Dependencies
+
+```bash
+cd "backend"
+pip install -r requirements.txt
+```
+
+### 2) Start Both Servers
+
+Terminal 1:
+
+```bash
+cd "backend"
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+```
+
+Terminal 2:
+
+```bash
+cd "frontend API"
+npm run dev
+```
+
+### 3) Verify Main Features
+
+- Bilingual logo in header: **Fathy فتحي**
+- Settings language switch (English/العربية)
+- Settings direction switch (LTR/RTL)
+- Chat page optional API key input
+
+---
+
+## Authentication System
+
+### Backend auth components
+
+- `app/schemas/auth.py`
+- `app/services/auth_service.py`
+- `app/routes/auth.py`
+- `app/routes/dependencies.py`
+
+### Auth endpoints
+
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/logout`
+- `DELETE /auth/account`
+- `GET /auth/me`
+
+### Frontend auth components
+
+- `src/lib/auth-context.tsx`
+- `src/components/LoginClient.tsx`
+- `src/components/SignupClient.tsx`
+- `src/app/auth/login/page.tsx`
+- `src/app/auth/signup/page.tsx`
+
+### Auth notes
+
+- JWT-based auth, token persistence in localStorage
+- User menu supports logout and account deletion
+- Password hashing via bcrypt/passlib
+
+---
+
+## Conversation Endpoints (Authenticated)
+
+- `GET /conversations`
+- `POST /conversations`
+- `GET /conversations/{id}/messages`
+- `DELETE /conversations/{id}`
+- `PATCH /conversations/{id}/title`
+
+`POST /chat` supports optional `conversation_id` and returns it.
+`POST /chat/stream` supports SSE events and optional `conversation_id`.
+
+---
+
+## Recent Functional Updates
+
+- PyJWT version aligned to `2.12.1`
+- Bilingual logo (English + Arabic)
+- API key management in chat/settings
+- Language preference persistence and RTL support
+
+### API key behavior
+
+- API keys are stored locally in browser localStorage
+- Client key can be passed per request
+- If absent, backend falls back to environment key
+
+---
+
+## Troubleshooting
+
+### Dependency install errors
+
+- Re-run `pip install -r requirements.txt`
+- Ensure active Python environment is correct
+
+### API key issues
+
+- Verify key format starts with `sk-`
+- Clear and re-enter key from Settings
+
+### UI issues
+
+- Hard refresh browser cache
+- Confirm frontend runs latest local code
+
+---
+
+## Upgrade Path (Vector DB)
+
+Current MVP keeps memory in SQLite and ranks in Python. To move to vectors later:
+
+- Add embedding storage for `MemoryItem`
 - Compute embeddings on `/teach`
-- Replace `MemoryService.search()` with FAISS/Pinecone/pgvector retrieval
+- Replace current search with FAISS/Pinecone/pgvector retrieval
+
+---
+
+## Production Notes
+
+1. Set strong production `SECRET_KEY`
+2. Configure HTTPS
+3. Restrict CORS origins
+4. Add rate limiting and monitoring
+5. Consider reverse proxy (nginx)
 
