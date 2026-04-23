@@ -19,10 +19,10 @@ export function Button({
   const base = "inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2 text-sm font-medium transition disabled:opacity-60";
   const styles =
     variant === "primary"
-      ? "bg-[rgb(var(--primary))] text-white hover:brightness-110"
+      ? "bg-[rgb(var(--fg))] text-[rgb(var(--bg))] hover:opacity-80"
       : variant === "danger"
-        ? "bg-[rgb(var(--danger))] text-white hover:brightness-110"
-        : "border border-[rgb(var(--border))] bg-transparent text-[rgb(var(--fg))] hover:bg-[rgba(var(--primary),0.10)]";
+        ? "bg-[rgb(var(--danger))] text-white hover:opacity-80"
+        : "border border-[rgb(var(--border))] text-[rgb(var(--fg))] hover:bg-[rgb(var(--border))]/50";
   return <button className={clsx(base, styles, className)} disabled={disabled} {...props} />;
 }
 

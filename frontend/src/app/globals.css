@@ -4,37 +4,37 @@
 
 :root {
   --bg: 255 255 255;
-  --fg: 15 23 42;
-  --muted: 100 116 139;
+  --fg: 13 13 13;
+  --muted: 142 142 160;
   --card: 255 255 255;
-  --border: 226 232 240;
-  --primary: 37 99 235;
-  --danger: 220 38 38;
+  --border: 227 227 227;
+  --primary: 25 25 25;
+  --danger: 239 68 68;
+  --sidebar-bg: 245 245 245;
+  --user-bubble: 25 25 25;
+  --input-bg: 247 247 248;
 }
 
 .dark {
-  --bg: 2 6 23;
-  --fg: 226 232 240;
-  --muted: 148 163 184;
-  --card: 15 23 42;
-  --border: 30 41 59;
-  --primary: 96 165 250;
+  --bg: 33 33 33;
+  --fg: 236 236 241;
+  --muted: 142 142 160;
+  --card: 33 33 33;
+  --border: 64 65 79;
+  --primary: 255 255 255;
   --danger: 248 113 113;
+  --sidebar-bg: 22 22 22;
+  --user-bubble: 64 65 79;
+  --input-bg: 64 65 79;
 }
 
-html,
-body {
+html, body {
   height: 100%;
 }
 
 body {
   color: rgb(var(--fg));
   background: rgb(var(--bg));
-}
-
-/* Better Arabic rendering */
-body {
-  font-feature-settings: "kern";
 }
 
 @keyframes blink {
@@ -45,13 +45,18 @@ body {
 .typing-cursor::after {
   content: "▋";
   animation: blink 0.9s step-start infinite;
-  color: rgb(var(--primary));
+  color: rgb(var(--muted));
   margin-left: 2px;
 }
 
 @keyframes fadeSlideIn {
   from { opacity: 0; transform: translateY(6px); }
-  to { opacity: 1; transform: translateY(0); }
+  to   { opacity: 1; transform: translateY(0); }
 }
 
-.msg-appear { animation: fadeSlideIn 0.18s ease-out; }
+.msg-appear { animation: fadeSlideIn 0.15s ease-out; }
+
+/* thin scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: rgb(var(--border)); border-radius: 3px; }

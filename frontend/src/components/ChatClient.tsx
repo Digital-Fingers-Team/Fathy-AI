@@ -1,14 +1,18 @@
 "use client";
 
 import { useMemo, useRef, useEffect, useState } from "react";
+import Image from "next/image";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+import { Send } from "lucide-react";
 
 import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
 import { useApiKey } from "@/lib/api-key-context";
-import { Button, Card, Pill, Textarea } from "@/components/ui";
+import { Pill } from "@/components/ui";
 import { getPrefs } from "@/components/ClientPrefs";
 import ConversationSidebar from "@/components/ConversationSidebar";
+import { useAuth } from "@/lib/auth-context";
+import fathyLogo from "@/app/fathy.png";
 
 type Msg = {
   role: "user" | "assistant";
@@ -20,37 +24,30 @@ type Msg = {
 const MAX_HISTORY_TURNS = 10;
 
 function buildHistory(messages: Msg[]): HistoryMessage[] {
-  const real = messages.slice(1);
-  const trimmed = real.slice(-MAX_HISTORY_TURNS * 2);
-  return trimmed.map((m) => ({ role: m.role, content: m.content }));
+  return messages.slice(1).slice(-MAX_HISTORY_TURNS * 2).map((m) => ({ role: m.role, content: m.content }));
 }
 
 function TagsRow({ tags }: { tags: string[] }) {
   if (!tags.length) return null;
-  return <div className="mt-2 flex flex-wrap gap-2">{tags.map((t) => <Pill key={t}>{t}</Pill>)}</div>;
+  return <div className="mt-2 flex flex-wrap gap-1">{tags.map((t) => <Pill key={t}>{t}</Pill>)}</div>;
 }
 
 function getWelcomeMessage(language: "en" | "ar"): string {
-  if (language === "ar") return "أنا فتحي (Fathy). اسألني أي شيء وسأساعدك في التعلم واكتشاف معلومات جديدة.";
-  return "I'm Fathy. Ask me anything and I'll help you learn and discover new facts.";
+  if (language === "ar") return "مرحباً! أنا فتحي، مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟";
+  return "Hello! I'm Fathy, your AI assistant. How can I help you today?";
 }
 
 function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
   if (!items.length) return null;
   return (
-    <details className="mt-3 rounded-xl border border-[rgb(var(--border))] bg-[rgba(var(--primary),0.06)] px-3 py-2">
-      <summary className="cursor-pointer text-xs font-medium text-[rgb(var(--muted))]">Used memory ({items.length})</summary>
-      <div className="mt-2 space-y-3 text-sm">
+    <details className="mt-2 rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--input-bg))] px-3 py-2">
+      <summary className="cursor-pointer text-xs text-[rgb(var(--muted))]">Sources ({items.length})</summary>
+      <div className="mt-2 space-y-2">
         {items.map((m) => (
-          <div key={m.id} className="rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-3">
-            <div className="flex items-center justify-between gap-3">
-              <div className="text-xs text-[rgb(var(--muted))]">#{m.id}</div>
-              <div className="text-xs text-[rgb(var(--muted))]">score: {m.score}</div>
-            </div>
-            <div className="mt-2 text-xs font-semibold text-[rgb(var(--muted))]">Q</div>
-            <div className="text-sm">{m.question}</div>
-            <div className="mt-2 text-xs font-semibold text-[rgb(var(--muted))]">A</div>
-            <div className="whitespace-pre-wrap text-sm">{m.answer}</div>
+          <div key={m.id} className="rounded-lg border border-[rgb(var(--border))] bg-[rgb(var(--card))] p-2">
+            <div className="text-xs text-[rgb(var(--muted))]">Score: {m.score}</div>
+            <div className="text-xs font-medium mt-1">{m.question}</div>
+            <div className="text-xs text-[rgb(var(--muted))] mt-0.5">{m.answer}</div>
             <TagsRow tags={m.tags} />
           </div>
         ))}
@@ -61,7 +58,7 @@ function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
 
 export function ChatClient() {
   const { apiKey } = useApiKey();
-  const [selectedModel, setSelectedModel] = useState("Fathy 1.1.1");
+  const { user } = useAuth();
   const [language, setLanguage] = useState<"en" | "ar">("en");
   const [messages, setMessages] = useState<Msg[]>([{ role: "assistant", content: getWelcomeMessage("en") }]);
   const [input, setInput] = useState("");
@@ -69,6 +66,7 @@ export function ChatClient() {
   const [activeConversationId, setActiveConversationId] = useState<number | null>(null);
   const [sidebarReloadKey, setSidebarReloadKey] = useState(0);
   const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     const prefs = getPrefs();
@@ -80,6 +78,14 @@ export function ChatClient() {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
+  // Auto-resize textarea
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = "auto";
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 120) + "px";
+    }
+  }, [input]);
+
   const canSend = useMemo(() => input.trim().length > 0 && !loading, [input, loading]);
 
   async function onSend() {
@@ -88,10 +94,12 @@ export function ChatClient() {
     setLoading(true);
     setInput("");
 
-    const userMsg: Msg = { role: "user", content: text };
     const historySnapshot = buildHistory([...messages]);
-
-    setMessages((prev) => [...prev, userMsg, { role: "assistant", content: "", usedMemory: [], note: null }]);
+    setMessages((prev) => [
+      ...prev,
+      { role: "user", content: text },
+      { role: "assistant", content: "", usedMemory: [], note: null },
+    ]);
 
     const apiBase = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
     const token = typeof window !== "undefined" ? localStorage.getItem("auth_token") : null;
@@ -129,49 +137,27 @@ export function ChatClient() {
         const { done, value } = await reader.read();
         if (done) break;
         buffer += decoder.decode(value, { stream: true });
-
         const lines = buffer.split("\n\n");
         buffer = lines.pop() ?? "";
 
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           try {
-            const parsed: { type?: string; data?: RetrievedMemory[]; content?: string; note?: string | null; message?: string } = JSON.parse(line.slice(6));
+            const parsed = JSON.parse(line.slice(6));
             if (parsed.type === "memory") {
-              setMessages((prev) => {
-                const copy = [...prev];
-                copy[copy.length - 1] = { ...copy[copy.length - 1], usedMemory: parsed.data ?? [] };
-                return copy;
-              });
+              setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], usedMemory: parsed.data ?? [] }; return c; });
             } else if (parsed.type === "chunk") {
-              setMessages((prev) => {
-                const copy = [...prev];
-                copy[copy.length - 1] = {
-                  ...copy[copy.length - 1],
-                  content: copy[copy.length - 1].content + (parsed.content ?? ""),
-                };
-                return copy;
-              });
+              setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], content: c[c.length - 1].content + (parsed.content ?? "") }; return c; });
             } else if (parsed.type === "done") {
-              setMessages((prev) => {
-                const copy = [...prev];
-                copy[copy.length - 1] = { ...copy[copy.length - 1], note: parsed.note ?? null };
-                return copy;
-              });
+              setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], note: parsed.note ?? null }; return c; });
             } else if (parsed.type === "error") {
-              throw new Error(parsed.message ?? "Unknown stream error");
+              throw new Error(parsed.message ?? "Stream error");
             }
-          } catch {
-            // ignore malformed lines
-          }
+          } catch { /* ignore malformed */ }
         }
       }
     } catch (e) {
-      setMessages((prev) => {
-        const copy = [...prev];
-        copy[copy.length - 1] = { ...copy[copy.length - 1], content: `Error: ${(e as Error).message}` };
-        return copy;
-      });
+      setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], content: `Error: ${(e as Error).message}` }; return c; });
     } finally {
       setLoading(false);
     }
@@ -193,68 +179,97 @@ export function ChatClient() {
     setSidebarReloadKey((k) => k + 1);
   }
 
+  const userInitial = user?.username?.[0]?.toUpperCase() ?? "U";
+
   return (
     <div className="flex gap-4">
+      {/* Sidebar */}
       <ConversationSidebar
         activeId={activeConversationId}
         onSelect={(id) => void loadConversation(id)}
-        onCreate={() => {
-          setActiveConversationId(null);
-          setMessages([{ role: "assistant", content: getWelcomeMessage(language) }]);
-        }}
+        onCreate={() => { setActiveConversationId(null); setMessages([{ role: "assistant", content: getWelcomeMessage(language) }]); }}
         onDelete={(id) => void deleteConversation(id)}
         reloadKey={sidebarReloadKey}
       />
-      <div className="flex-1">
-        <Card className="p-4">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <div className="text-lg font-semibold">Chat</div>
-              <div className="text-sm text-[rgb(var(--muted))]">Memory is searched first, then injected as context before generating.</div>
-            </div>
-            <div className="text-right text-xs text-[rgb(var(--muted))]">{process.env.NEXT_PUBLIC_API_URL}</div>
-          </div>
 
-          <div className="mt-4 max-h-[60vh] space-y-3 overflow-y-auto pr-1">
-            {messages.map((m, idx) => {
-              const isStreamingAssistant = loading && idx === messages.length - 1 && m.role === "assistant" && m.content.length > 0;
+      {/* Chat area */}
+      <div className="flex-1 flex flex-col h-[calc(100vh-80px)] rounded-xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] overflow-hidden">
+
+        {/* Header */}
+        <div className="px-4 py-3 border-b border-[rgb(var(--border))] flex items-center gap-3">
+          <Image src={fathyLogo} alt="Fathy" width={28} height={28} className="rounded-lg object-contain" />
+          <div>
+            <div className="text-sm font-semibold">Fathy</div>
+            <div className="text-xs text-[rgb(var(--muted))]">AI Assistant</div>
+          </div>
+        </div>
+
+        {/* Messages */}
+        <div className="flex-1 overflow-y-auto px-4 py-4 space-y-6">
+          {messages.map((m, idx) => {
+            const isLast = idx === messages.length - 1;
+            const isStreaming = loading && isLast && m.role === "assistant" && m.content.length > 0;
+
+            if (m.role === "user") {
               return (
-                <div key={idx} className={`msg-appear ${m.role === "user" ? "flex justify-end" : "flex justify-start"}`}>
-                  <div className={m.role === "user" ? "max-w-[90%] rounded-2xl bg-[rgb(var(--primary))] px-4 py-3 text-sm text-white md:max-w-[70%]" : `max-w-[90%] rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 text-sm md:max-w-[70%] ${isStreamingAssistant ? "typing-cursor" : ""}`}>
-                    {m.role === "assistant" ? (
-                      <>
-                        <div className="prose prose-slate max-w-none dark:prose-invert">
-                          <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
-                        </div>
-                        {m.note && <div className="mt-2 rounded-lg bg-[rgba(var(--primary),0.08)] px-2 py-1 text-xs text-[rgb(var(--muted))]">{m.note}</div>}
-                        {m.usedMemory && <MemoryPanel items={m.usedMemory} />}
-                      </>
-                    ) : (
-                      <div className="whitespace-pre-wrap">{m.content}</div>
-                    )}
+                <div key={idx} className="msg-appear flex items-start justify-end gap-3">
+                  <div className="max-w-[75%] rounded-2xl rounded-br-sm bg-[rgb(var(--user-bubble))] px-4 py-3 text-sm text-white">
+                    <p className="whitespace-pre-wrap">{m.content}</p>
+                  </div>
+                  <div className="shrink-0 w-8 h-8 rounded-full bg-[rgb(var(--border))] flex items-center justify-center text-xs font-bold text-[rgb(var(--fg))]">
+                    {userInitial}
                   </div>
                 </div>
               );
-            })}
-            {loading && messages[messages.length - 1]?.content.length === 0 && (
-              <div className="flex justify-start">
-                <div className="max-w-[70%] rounded-2xl border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 text-sm text-[rgb(var(--muted))]">Thinking…</div>
-              </div>
-            )}
-            <div ref={bottomRef} />
-          </div>
+            }
 
-          <div className="mt-4 grid gap-3">
-            <div className="flex items-center gap-2">
-              <label className="text-xs font-medium text-[rgb(var(--muted))]">AI Model:</label>
-              <select value={selectedModel} onChange={(e) => setSelectedModel(e.target.value)} className="flex-1 rounded-xl border border-[rgb(var(--border))] bg-transparent px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-[rgba(var(--primary),0.35)]">
-                <option value="Fathy 1.1.1">Fathy 1.1.1</option>
-              </select>
+            return (
+              <div key={idx} className="msg-appear flex items-start gap-3">
+                <div className="shrink-0 w-8 h-8 rounded-full border border-[rgb(var(--border))] overflow-hidden">
+                  <Image src={fathyLogo} alt="Fathy" width={32} height={32} className="object-contain" />
+                </div>
+                <div className={`max-w-[75%] rounded-2xl rounded-bl-sm border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3 text-sm ${isStreaming ? "typing-cursor" : ""}`}>
+                  {m.content ? (
+                    <div className="prose prose-sm max-w-none dark:prose-invert">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>{m.content}</ReactMarkdown>
+                    </div>
+                  ) : null}
+                  {m.note && (
+                    <div className="mt-2 text-xs text-[rgb(var(--muted))] italic">{m.note}</div>
+                  )}
+                  {m.usedMemory && <MemoryPanel items={m.usedMemory} />}
+                </div>
+              </div>
+            );
+          })}
+
+          {/* Loading dots */}
+          {loading && messages[messages.length - 1]?.content.length === 0 && (
+            <div className="flex items-start gap-3">
+              <div className="shrink-0 w-8 h-8 rounded-full border border-[rgb(var(--border))] overflow-hidden">
+                <Image src={fathyLogo} alt="Fathy" width={32} height={32} className="object-contain" />
+              </div>
+              <div className="rounded-2xl rounded-bl-sm border border-[rgb(var(--border))] bg-[rgb(var(--card))] px-4 py-3">
+                <div className="flex gap-1.5 items-center h-4">
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+                  <div className="w-1.5 h-1.5 bg-[rgb(var(--muted))] rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+                </div>
+              </div>
             </div>
-            <Textarea
-              rows={3}
+          )}
+
+          <div ref={bottomRef} />
+        </div>
+
+        {/* Input */}
+        <div className="border-t border-[rgb(var(--border))] p-4">
+          <div className="flex items-end gap-2 bg-[rgb(var(--input-bg))] rounded-xl border border-[rgb(var(--border))] px-4 py-2 focus-within:border-[rgb(var(--fg))]/30 transition">
+            <textarea
+              ref={textareaRef}
+              rows={1}
               value={input}
-              placeholder="Type your message… اكتب رسالتك…"
+              placeholder="Message Fathy…"
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => {
                 if (e.key === "Enter" && !e.shiftKey) {
@@ -262,13 +277,20 @@ export function ChatClient() {
                   void onSend();
                 }
               }}
+              className="flex-1 resize-none bg-transparent text-sm outline-none text-[rgb(var(--fg))] placeholder-[rgb(var(--muted))] min-h-[24px] max-h-[120px]"
             />
-            <div className="flex items-center justify-between gap-2">
-              <div className="text-xs text-[rgb(var(--muted))]">Enter to send · Shift+Enter for new line</div>
-              <Button onClick={() => void onSend()} disabled={!canSend}>{loading ? "Thinking…" : "Send"}</Button>
-            </div>
+            <button
+              onClick={() => void onSend()}
+              disabled={!canSend}
+              className="shrink-0 w-8 h-8 rounded-lg bg-[rgb(var(--fg))] text-[rgb(var(--bg))] flex items-center justify-center disabled:opacity-30 hover:opacity-80 transition"
+            >
+              <Send size={14} />
+            </button>
           </div>
-        </Card>
+          <p className="text-xs text-[rgb(var(--muted))] text-center mt-2">
+            Enter to send · Shift+Enter for new line
+          </p>
+        </div>
       </div>
     </div>
   );
