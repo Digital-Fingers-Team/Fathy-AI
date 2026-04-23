@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MessageSquare, PlusCircle, Trash2 } from "lucide-react";
 import { api } from "@/lib/api";
+import { useAuth } from "@/lib/auth-context";
 import { clsx } from "@/lib/clsx";
 
 type Conversation = { id: number; title: string; updated_at: string };
@@ -28,13 +29,29 @@ function sectionLabel(dateStr: string): string {
 
 export default function ConversationSidebar({ activeId, onSelect, onCreate, onDelete, reloadKey = 0 }: Props) {
   const [items, setItems] = useState<Conversation[]>([]);
+  const { isAuthenticated, isLoading } = useAuth();
 
   const load = useCallback(async () => {
-    const res = await api.conversations.list();
-    setItems([...res.items].sort((a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime()));
-  }, []);
+    if (!isAuthenticated) {
+      setItems([]);
+      return;
+    }
 
-  useEffect(() => { void load(); }, [load, reloadKey]);
+    try {
+      const res = await api.conversations.list();
+      const sorted = [...res.items].sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
+      setItems(sorted);
+    } catch (error) {
+      console.error("Failed to load conversations:", error);
+      setItems([]);
+    }
+  }, [isAuthenticated]);
+
+  useEffect(() => {
+    void load();
+  }, [load, reloadKey]);
 
   const grouped = useMemo(() => {
     const map = new Map<string, Conversation[]>();
@@ -49,8 +66,6 @@ export default function ConversationSidebar({ activeId, onSelect, onCreate, onDe
 
   return (
     <aside className="hidden md:flex w-64 shrink-0 flex-col bg-[rgb(var(--sidebar-bg))] rounded-xl border border-[rgb(var(--border))] overflow-hidden h-[calc(100vh-80px)] sticky top-16">
-
-      {/* New Chat */}
       <div className="p-3 border-b border-[rgb(var(--border))]">
         <button
           onClick={onCreate}
@@ -61,39 +76,47 @@ export default function ConversationSidebar({ activeId, onSelect, onCreate, onDe
         </button>
       </div>
 
-      {/* List */}
-      <div className="flex-1 overflow-y-auto p-2">
-        {grouped.map(([label, conversations]) => (
-          <div key={label} className="mb-3">
-            <div className="px-2 py-1 text-xs font-medium text-[rgb(var(--muted))] uppercase tracking-wide">
-              {label}
-            </div>
-            <div className="space-y-0.5">
-              {conversations.map((c) => (
-                <div
-                  key={c.id}
-                  className={clsx(
-                    "group flex items-center gap-2 rounded-lg px-2 py-2 text-sm transition cursor-pointer",
-                    activeId === c.id
-                      ? "bg-[rgb(var(--border))] text-[rgb(var(--fg))]"
-                      : "text-[rgb(var(--muted))] hover:bg-[rgb(var(--border))]/50 hover:text-[rgb(var(--fg))]"
-                  )}
-                >
-                  <button onClick={() => onSelect(c.id)} className="flex-1 flex items-center gap-2 text-left min-w-0">
-                    <MessageSquare size={14} className="shrink-0" />
-                    <span className="truncate text-xs">{c.title}</span>
-                  </button>
-                  <button
-                    onClick={() => onDelete(c.id)}
-                    className="invisible group-hover:visible p-1 rounded text-[rgb(var(--muted))] hover:text-[rgb(var(--danger))] transition"
+      <div className="flex-1 overflow-y-auto px-2 pb-4 space-y-1 scrollbar-thin">
+        {isLoading ? (
+          <div className="px-2 text-sm text-white/50">Loading conversations...</div>
+        ) : !isAuthenticated ? (
+          <div className="px-2 text-sm text-white/50">Log in to see your conversations.</div>
+        ) : grouped.length === 0 ? (
+          <div className="px-2 text-sm text-white/50">No conversations yet.</div>
+        ) : (
+          grouped.map(([label, conversations]) => (
+            <div key={label}>
+              <div className="mb-2 px-2 text-xs font-semibold uppercase tracking-wider text-white/40">{label}</div>
+              <div className="space-y-1">
+                {conversations.map((c) => (
+                  <div
+                    key={c.id}
+                    className={clsx(
+                      "group flex items-center gap-2 rounded-lg px-2 py-2 text-sm cursor-pointer transition-all",
+                      activeId === c.id
+                        ? "bg-white/12 text-white border-l-2 border-violet-500"
+                        : "text-white/70 hover:bg-white/8 hover:text-white",
+                    )}
                   >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
+                    <button
+                      onClick={() => onSelect(c.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                    >
+                      <MessageSquare size={15} className="shrink-0 text-inherit" />
+                      <span className="truncate">{c.title}</span>
+                    </button>
+                    <button
+                      onClick={() => onDelete(c.id)}
+                      className="invisible rounded p-1 text-white/40 hover:text-red-400 group-hover:visible"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
+                ))}
+              </div>
             </div>
-          </div>
-        ))}
+          ))
+        )}
       </div>
     </aside>
   );
