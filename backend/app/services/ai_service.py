@@ -7,26 +7,11 @@ from dataclasses import dataclass
 from openai import OpenAI
 
 from app.core.config import Settings
+from app.services.local_fathy_model import get_local_fathy_model
 from app.services.memory_service import ScoredMemory
+from app.services.prompts import SYSTEM_PROMPT
 
 MAX_HISTORY_TURNS = 10
-
-SYSTEM_PROMPT = (
-    "You are Fathy (فتحي), a bilingual (Arabic/English) AI assistant. "
-    "Be precise and helpful. "
-    "You are a smart conversational assistant that can detect multiple intents in a single user message. "
-    "If the message contains a greeting (for example: hi, hello, hey), include a friendly greeting in your response. "
-    "If the message asks about identity (for example: who am I), answer exactly with the identity statement "
-    "'You are an amazing human.' as part of your response. "
-    "If multiple intents are present, combine them naturally in one smooth sentence. "
-    "Never ignore a detected intent, and never split the answer into separate robotic lines. "
-    "Never claim you retrained or self-learned — your knowledge comes from "
-    "facts explicitly stored in memory by the user. "
-    "If 'Known facts' are provided below the user message, use them when relevant "
-    "and cite that you're drawing from stored memory. "
-    "If they are not relevant, ignore them and answer from your general knowledge. "
-    "Reply in the same language the user writes in."
-)
 
 
 @dataclass(frozen=True)
@@ -48,8 +33,8 @@ def _build_known_facts(memories: list[ScoredMemory]) -> str:
     lines = ["[Known facts from stored memory]"]
     for m in memories:
         tags = f" (tags: {', '.join(m.tags)})" if m.tags else ""
-        lines.append(f"• Q: {m.item.question}{tags}")
-        lines.append(f"  A: {m.item.answer}")
+        lines.append(f"Q: {m.item.question}{tags}")
+        lines.append(f"A: {m.item.answer}")
     return "\n".join(lines)
 
 
@@ -65,6 +50,15 @@ class AIService:
         self._settings = settings
         effective_api_key = api_key or settings.openai_api_key
         self._client = OpenAI(api_key=effective_api_key) if effective_api_key else None
+        self._local_model = get_local_fathy_model()
+
+    @property
+    def model_name(self) -> str | None:
+        if self._local_model is not None:
+            return self._local_model.model_name
+        if self._client is not None:
+            return self._settings.model_name
+        return None
 
     def _build_messages(
         self,
@@ -98,6 +92,10 @@ class AIService:
         memories: list[ScoredMemory],
         history: list[HistoryMessage] | None = None,
     ) -> AIResult:
+        if self._local_model is not None:
+            local_result = self._local_model.answer(message, memories, history=history)
+            return AIResult(answer=local_result.answer, model=local_result.model, note=local_result.note)
+
         if not self._client:
             text, note = self._fallback_text(memories)
             return AIResult(answer=text, model=None, note=note)
@@ -117,6 +115,11 @@ class AIService:
         memories: list[ScoredMemory],
         history: list[HistoryMessage] | None = None,
     ) -> AsyncGenerator[str, None]:
+        if self._local_model is not None:
+            for chunk in self._local_model.stream_answer(message, memories, history=history):
+                yield chunk
+            return
+
         if not self._client:
             text, _ = self._fallback_text(memories)
             yield text

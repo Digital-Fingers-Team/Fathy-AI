@@ -1,7 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { api, tokenManager, type User } from "@/lib/api";
+import { api, ApiError, tokenManager, type User } from "@/lib/api";
 
 type AuthContextType = {
   user: User | null;
@@ -29,7 +29,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(currentUser);
         } catch (error) {
           console.error("Failed to get current user:", error);
-          tokenManager.clearToken();
+          const status = error instanceof ApiError ? error.status : null;
+          if (status === 401 || status === 403) {
+            tokenManager.clearToken();
+          }
           setUser(null);
         }
       }

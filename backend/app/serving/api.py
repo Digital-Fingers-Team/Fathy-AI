@@ -65,7 +65,7 @@ class FathyInferenceBackend:
 
         return InferenceResponse(
             id=f"msg_{uuid.uuid4().hex[:24]}",
-            model=request.model,
+            model=result.model or request.model,
             output_text=result.answer,
             input_tokens=max(1, len(last_user_message.split())),
             output_tokens=max(1, len(result.answer.split())),

@@ -150,7 +150,7 @@ async def chat_stream(
 
             done_payload = {
                 "type": "done",
-                "model": request.app.state.settings.model_name if ai._client else None,
+                "model": ai.model_name,
                 "note": None,
             }
             yield f"data: {json.dumps(done_payload, ensure_ascii=False)}\n\n"

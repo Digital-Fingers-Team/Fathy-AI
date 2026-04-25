@@ -80,7 +80,7 @@ python -m uvicorn app.main:app --reload
 
 ### Backend Notes
 
-- If `OPENAI_API_KEY` is not set, `/chat` answers from stored memory only.
+- If `OPENAI_API_KEY` is not set, `/chat` tries the local `fathy-llm/checkpoints/sft/latest.pt` checkpoint first, then falls back to stored memory if needed.
 - Memory ranking uses token-overlap + substring boost + recency boost in `backend/app/services/memory_service.py`.
 
 ---

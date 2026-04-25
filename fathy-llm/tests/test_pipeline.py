@@ -20,7 +20,7 @@ def test_cpu_smoke_pipeline(tmp_path: Path):
     corpus_path = tmp_path / "tiny_corpus.txt"
     corpus_lines = [
         "أهلا بك في مشروع فتحي للذكاء الاصطناعي",
-        "Fathy is built by Digital Fingers Team",
+        "Fathy is built by Fathy team (Baraa)",
         "Arabic first then concise English support",
         "مرحبا! هذا اختبار بسيط لخط التدريب",
     ]

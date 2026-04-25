@@ -61,7 +61,7 @@ async def register(
     logger.info(f"New user registered: {new_user.email}")
 
     # Create access token
-    access_token = AuthService.create_access_token(data={"sub": new_user.id})
+    access_token = AuthService.create_access_token(data={"sub": str(new_user.id)})
 
     return TokenResponse(
         access_token=access_token,
@@ -94,7 +94,7 @@ async def login(
     logger.info(f"User logged in: {user.email}")
 
     # Create access token
-    access_token = AuthService.create_access_token(data={"sub": user.id})
+    access_token = AuthService.create_access_token(data={"sub": str(user.id)})
 
     return TokenResponse(
         access_token=access_token,
