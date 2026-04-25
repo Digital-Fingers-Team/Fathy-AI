@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { MessageSquare, PlusCircle, Trash2 } from "lucide-react";
-import { api } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { clsx } from "@/lib/clsx";
 
@@ -44,6 +44,10 @@ export default function ConversationSidebar({ activeId, onSelect, onCreate, onDe
       );
       setItems(sorted);
     } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        setItems([]);
+        return;
+      }
       console.error("Failed to load conversations:", error);
       setItems([]);
     }

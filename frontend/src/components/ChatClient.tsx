@@ -6,7 +6,7 @@ import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import { Send } from "lucide-react";
 
-import { api, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
+import { api, ApiError, type HistoryMessage, type RetrievedMemory } from "@/lib/api";
 import { useApiKey } from "@/lib/api-key-context";
 import { Pill } from "@/components/ui";
 import { getPrefs } from "@/components/ClientPrefs";
@@ -35,6 +35,10 @@ function TagsRow({ tags }: { tags: string[] }) {
 function getWelcomeMessage(language: "en" | "ar"): string {
   if (language === "ar") return "مرحباً! أنا فتحي، مساعدك الذكي. كيف يمكنني مساعدتك اليوم؟";
   return "Hello! I'm Fathy, your AI assistant. How can I help you today?";
+}
+
+function isUnauthorizedError(error: unknown): boolean {
+  return error instanceof ApiError && error.status === 401;
 }
 
 function MemoryPanel({ items }: { items: RetrievedMemory[] }) {
@@ -157,26 +161,43 @@ export function ChatClient() {
         }
       }
     } catch (e) {
-      setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], content: `Error: ${(e as Error).message}` }; return c; });
+      const message = isUnauthorizedError(e)
+        ? "Your session expired. Please log in again."
+        : `Error: ${(e as Error).message}`;
+      setMessages((prev) => { const c = [...prev]; c[c.length - 1] = { ...c[c.length - 1], content: message }; return c; });
     } finally {
       setLoading(false);
     }
   }
 
   async function loadConversation(id: number) {
-    const res = await api.conversations.getMessages(id);
-    const loaded: Msg[] = res.messages.map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
-    setMessages(loaded.length ? loaded : [{ role: "assistant", content: getWelcomeMessage(language) }]);
-    setActiveConversationId(id);
+    try {
+      const res = await api.conversations.getMessages(id);
+      const loaded: Msg[] = res.messages.map((m) => ({ role: m.role === "user" ? "user" : "assistant", content: m.content }));
+      setMessages(loaded.length ? loaded : [{ role: "assistant", content: getWelcomeMessage(language) }]);
+      setActiveConversationId(id);
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      console.error("Failed to load conversation:", error);
+    }
   }
 
   async function deleteConversation(id: number) {
-    await api.conversations.delete(id);
-    if (activeConversationId === id) {
-      setActiveConversationId(null);
-      setMessages([{ role: "assistant", content: getWelcomeMessage(language) }]);
+    try {
+      await api.conversations.delete(id);
+      if (activeConversationId === id) {
+        setActiveConversationId(null);
+        setMessages([{ role: "assistant", content: getWelcomeMessage(language) }]);
+      }
+      setSidebarReloadKey((k) => k + 1);
+    } catch (error) {
+      if (isUnauthorizedError(error)) {
+        return;
+      }
+      console.error("Failed to delete conversation:", error);
     }
-    setSidebarReloadKey((k) => k + 1);
   }
 
   const userInitial = user?.username?.[0]?.toUpperCase() ?? "U";
@@ -295,3 +316,4 @@ export function ChatClient() {
     </div>
   );
 }
+

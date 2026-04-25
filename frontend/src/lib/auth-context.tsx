@@ -39,6 +39,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     initializeAuth();
   }, []);
 
+  useEffect(() => {
+    const handleAuthTokenChanged = () => {
+      if (!tokenManager.getToken()) {
+        setUser(null);
+      }
+    };
+
+    window.addEventListener("auth-token-changed", handleAuthTokenChanged);
+    return () => window.removeEventListener("auth-token-changed", handleAuthTokenChanged);
+  }, []);
+
   const login = async (email: string, password: string): Promise<User> => {
     setIsLoading(true);
     try {

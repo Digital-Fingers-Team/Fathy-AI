@@ -59,6 +59,25 @@ export type RegisterRequest = {
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 const TOKEN_STORAGE_KEY = "auth_token";
+const AUTH_TOKEN_CHANGED_EVENT = "auth-token-changed";
+
+export class ApiError extends Error {
+  status: number;
+  body: string;
+
+  constructor(status: number, body: string) {
+    super(body || `Request failed: ${status}`);
+    this.name = "ApiError";
+    this.status = status;
+    this.body = body;
+  }
+}
+
+function emitAuthTokenChanged(): void {
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new Event(AUTH_TOKEN_CHANGED_EVENT));
+  }
+}
 
 // Token management
 export const tokenManager = {
@@ -72,12 +91,14 @@ export const tokenManager = {
   setToken: (token: string): void => {
     if (typeof window !== "undefined") {
       localStorage.setItem(TOKEN_STORAGE_KEY, token);
+      emitAuthTokenChanged();
     }
   },
 
   clearToken: (): void => {
     if (typeof window !== "undefined") {
       localStorage.removeItem(TOKEN_STORAGE_KEY);
+      emitAuthTokenChanged();
     }
   },
 
@@ -108,7 +129,7 @@ async function req<T>(path: string, init?: RequestInit, requiresAuth = false): P
       tokenManager.clearToken();
     }
     const text = await res.text().catch(() => "");
-    throw new Error(text || `Request failed: ${res.status}`);
+    throw new ApiError(res.status, text);
   }
   return (await res.json()) as T;
 }

@@ -1,0 +1,11 @@
+{
+  "unk_token": "<unk>",
+  "bos_token": "<|begin_of_text|>",
+  "eos_token": "<|end_of_text|>",
+  "additional_special_tokens": [
+    "<|human|>",
+    "<|assistant|>",
+    "<|system|>",
+    "<|end_turn|>"
+  ]
+}
