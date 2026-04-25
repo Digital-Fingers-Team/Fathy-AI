@@ -110,7 +110,7 @@ class RotaryEmbedding(nn.Module):
             sin = self.sin_cached[:seq_len].unsqueeze(0).unsqueeze(0)
             return cos, sin
 
-        cos = self.cos_cached.index_select(0, position_ids.view(-1)).view(
+        cos = self.cos_cached.index_select(0, position_ids.view(-1)).reshape(
             *position_ids.shape, self.dim
         )
         sin = self.sin_cached.index_select(0, position_ids.view(-1)).view(
